@@ -4,11 +4,23 @@ object "MyYulERC1155" {
 
     // constructor
     code {
-        // Store the owner in slot 0.
-        sstore(0, caller())
+        /* -------- storage layout ---------- */
+        function ownerPos() -> p { p := 0 }
+        function stringLengthPos() -> p { p := 1 }
+        function stringPos() -> p {
+            mstore(0x00, stringLengthPos())
+            p := keccak256(0x00, 0x20)
+        }
 
-        // Store the uri in slot 1.
-        sstore(1, caller())
+        // Store the owner in slot 0.
+        sstore(ownerPos(), caller())
+
+        // Store the (length * 2 + 1) in slot 1.
+        sstore(stringLengthPos(), 0x4f)
+
+        // Store the actual string bytes in slot keccak256(1)
+        sstore(stringPos(), 0x68747470733a2f2f67616d652e6578616d706c652f6170692f6974656d2f7b69)
+        sstore(add(stringPos(), 1), 0x647d2e6a736f6e00000000000000000000000000000000000000000000000000)
 
         datacopy(0, dataoffset("runtime"), datasize("runtime"))
         return(0, datasize("runtime"))
@@ -19,9 +31,22 @@ object "MyYulERC1155" {
     object "runtime" {
 
         code {
-            mstore(0, 0x123)
-            return(0, 0x20)
+            /* -------- storage layout ---------- */
+            function ownerPos() -> p { p := 0 }
+            function stringLengthPos() -> p { p := 1 }
+            function stringPos() -> p {
+                mstore(0x00, stringLengthPos())
+                p := keccak256(0x00, 0x20)
+            }
+
+            mstore(0x00, sload(stringPos()))
+            mstore(0x20, sload(add(stringPos(), 1)))
+
+            // mstore(0x00, stringPos())
+            return(0, 0x40)
+
         }
+
     }
 
 }

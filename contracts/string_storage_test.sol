@@ -1,11 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol";
+
 contract Test {
     string public str;
 
     constructor() {
         str = "https://game.example/api/item/{id}.json";
+    }
+
+    function getInterfaceIdIERC165() external pure returns(bytes4) {
+        return type(IERC165).interfaceId;
+    }
+
+    function getInterfaceIdIERC1155() external pure returns(bytes4) {
+        return type(IERC1155).interfaceId;
+    }
+
+    function getInterfaceIdIERC1155MetadataURI() external pure returns(bytes4) {
+        return type(IERC1155MetadataURI).interfaceId;
     }
 
     function getStr() external view returns(string memory) {
@@ -80,7 +96,12 @@ contract Test {
         }
     }
 
-    function util() external pure returns(bytes32) {
-        return keccak256("https://game.example/api/item/{id}.json");
+    function util(string memory _arg) external pure returns(bytes32) {
+        return keccak256(abi.encodePacked(_arg));
+    }
+
+    // "01ffc9a7": "supportsInterface(bytes4)"
+    function supportsInterface(bytes4 interfaceId) external pure returns (bytes4) {
+        return interfaceId;
     }
 }

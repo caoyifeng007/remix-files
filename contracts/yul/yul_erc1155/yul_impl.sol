@@ -31,7 +31,17 @@ object "MyYulERC1155" {
         datacopy(0, dataoffset("runtime"), datasize("runtime"))
         return(0, datasize("runtime"))
     }
+// 0x3a33770a
+// 000000000000000000000000bee7ddd295b11b421c849ba060941bd1e17e0435
 
+// 0000000000000000000000000000000000000000000000000000000000000040 00
+// 00000000000000000000000000000000000000000000000000000000000000a0 20
+// 0000000000000000000000000000000000000000000000000000000000000002 40
+// 0000000000000000000000005b38da6a701c568545dcfcb03fcb875f56beddc4 60
+// 0000000000000000000000005b38da6a701c568545dcfcb03fcb875f56beddc4 80
+// 0000000000000000000000000000000000000000000000000000000000000002 a0
+// 0000000000000000000000000000000000000000000000000000000000000001 c0
+// 0000000000000000000000000000000000000000000000000000000000000002 e0
     object "runtime" {
 
         code {
@@ -49,6 +59,24 @@ object "MyYulERC1155" {
             case 0x00fdd58e /* "balanceOf(address,uint256)" */  {
                 returnUint(balanceOf(decodeAsAddress(0), decodeAsUint(1)))
             }
+            case 0x4e1273f4 /* "balanceOfBatch(address[],uint256[])" */  {
+                
+                balanceOfBatch(decodeAsUint(0), decodeAsUint(1))
+
+                // let fptr := mload(0x40)
+                // let optr := fptr
+
+                // mstore(fptr, 0x20)
+                // fptr := add(fptr, 0x20)
+                // mstore(fptr, 2)
+                // fptr := add(fptr, 0x20)
+                // mstore(fptr, 123)
+                // fptr := add(fptr, 0x20)
+                // mstore(fptr, 333)
+                // fptr := add(fptr, 0x20)
+                
+                // return(optr, sub(fptr, optr))
+            }
             default {
                 revert(0, 0)
             }
@@ -62,7 +90,7 @@ object "MyYulERC1155" {
 
             /* ---------- calldata decoding functions ----------- */
             function selector() -> s {
-                // 0x10...00 -> 1 x 10^28
+                // 0x10...00 -> 1 * 10^28
                 // calldataload will load 32 bytes, so the first 4 bytes will be left
                 s := div(calldataload(0), 0x100000000000000000000000000000000000000000000000000000000)
             }
@@ -146,6 +174,41 @@ object "MyYulERC1155" {
                 revertIfZeroAddress(acc)
                 let balancesLocation := balancesPos(acc, id)
                 b := sload(balancesLocation)
+            }
+            function balanceOfBatch(accArrPtr, idArrPtr)  {
+                // for example, idArrPtr's value is 0x40 then the length of accArr will be the 3rd slot in calldata
+                // it should be pass 2 to decodeAsUint() get that length
+                let accArrOffset := div(accArrPtr, 0x20)
+                let idArrOffset := div(idArrPtr, 0x20)
+
+                let accArrLen := decodeAsUint(accArrOffset)
+                let idArrLen := decodeAsUint(idArrOffset)
+
+                require(eq(accArrLen, idArrLen))
+
+                let fptr := mload(0x40)
+                let optr := fptr
+
+                // like return string, return dynamic array needs three steps
+                // step1 store ptr of actual data
+                mstore(fptr, 0x20)
+                fptr := add(fptr, 0x20)
+                // step2 store array length
+                mstore(fptr, accArrLen)
+                fptr := add(fptr, 0x20)
+                // step3 store actual data
+                for {let i := 0} lt(i, accArrLen) {i := add(i, 1)} {
+                    let addr := decodeAsAddress(add(add(accArrOffset, 1), i))
+                    let id := decodeAsUint(add(add(idArrOffset, 1), i))
+
+                    let b := balanceOf(addr, id)
+                    mstore(fptr, b)
+                    fptr := add(fptr, 0x20)
+                }
+
+
+                // return(optr, add(mul(accArrLen, 0x20), 0x40))
+                return(optr, sub(fptr, optr))
             }
 
             /* ---------- utility functions ---------- */

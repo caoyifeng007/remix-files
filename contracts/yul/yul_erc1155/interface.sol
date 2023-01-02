@@ -6,13 +6,13 @@ interface MyYulERC1155 {
 
     function noname() external view returns(bytes32);
 
-    function noname2() external view returns(uint256);
-
     function supportsInterface(bytes4 interfaceId) external view returns(bool);
 
     function uri(uint256 id) external view returns(string memory);
 
     function balanceOf(address account, uint256 id) external view returns(uint256);
+
+    function balanceOfBatch(address[] memory accounts,uint256[] memory ids) external view returns(uint256[] memory);
 }
 
 contract CallMyYulERC1155 {
@@ -27,10 +27,6 @@ contract CallMyYulERC1155 {
         return MyYulERC1155(_addr).noname();
     }
 
-    function callTargetStr(address _addr) external view returns(uint256) {
-        return MyYulERC1155(_addr).noname2();
-    }
-
     function callSupportInterface(address _addr, bytes4 interfaceId) external view returns(bool) {
         return MyYulERC1155(_addr).supportsInterface(interfaceId);
     }
@@ -42,4 +38,9 @@ contract CallMyYulERC1155 {
     function callBalanceOf(address _addr, address account, uint256 id) external view returns(uint256) {
         return MyYulERC1155(_addr).balanceOf(account, id);
     }
+
+    function callBalanceOfBatch(address _addr, address[] memory accounts,uint256[] memory ids) external view returns(uint256[] memory) {
+        return MyYulERC1155(_addr).balanceOfBatch(accounts, ids);
+    }
 }
+//

@@ -23,6 +23,11 @@ object "MyYulERC1155" {
         sstore(uriPos(), 0x68747470733a2f2f67616d652e6578616d706c652f6170692f6974656d2f7b69)
         sstore(add(uriPos(), 1), 0x647d2e6a736f6e00000000000000000000000000000000000000000000000000)
 
+        mstore(0x00, add(7, 0x100))
+        mstore(0x20, 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4)
+        let lc := keccak256(0x00, 0x40)
+        sstore(lc, 0x666)
+
         datacopy(0, dataoffset("runtime"), datasize("runtime"))
         return(0, datasize("runtime"))
     }
@@ -40,6 +45,9 @@ object "MyYulERC1155" {
             }
             case 0x0e89341c /* "uri(uint256)" */  {
                 uri(decodeAsUint(0))
+            }
+            case 0x00fdd58e /* "balanceOf(address,uint256)" */  {
+                returnUint(balanceOf(decodeAsAddress(0), decodeAsUint(1)))
             }
             default {
                 revert(0, 0)
@@ -95,6 +103,11 @@ object "MyYulERC1155" {
                 mstore(0x00, uriLengthPos())
                 p := keccak256(0x00, 0x20)
             }
+            function balancesPos(acc, id) -> p {
+                mstore(0x00, add(id, 0x100))
+                mstore(0x20, acc)
+                p := keccak256(0x00, 0x40)
+            }
 
             /* -------- storage access ---------- */
             function owner() -> o {
@@ -129,15 +142,23 @@ object "MyYulERC1155" {
                 
                 return(optr, add(mul(loops, 0x20), 0x40))
             }
+            function balanceOf(acc, id) -> b {
+                revertIfZeroAddress(acc)
+                let balancesLocation := balancesPos(acc, id)
+                b := sload(balancesLocation)
+            }
 
             /* ---------- utility functions ---------- */
+            function revertIfZeroAddress(addr) {
+                require(addr)
+            }
             function require(condition) {
                 if iszero(condition) { revert(0, 0) }
             }
 
 
-            mstore(0x00, 0x123)
-            return(0, 0x40)
+            // mstore(0x00, 0x123)
+            // return(0, 0x40)
 
         }
 

@@ -96,8 +96,8 @@ contract Test {
         }
     }
 
-    function util(string memory _arg) external pure returns(bytes32) {
-        return keccak256(abi.encodePacked(_arg));
+    function util(string memory _arg) external pure returns(bytes4) {
+        return bytes4(keccak256(abi.encodePacked(_arg)));
     }
 
     // "01ffc9a7": "supportsInterface(bytes4)"

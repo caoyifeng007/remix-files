@@ -11,6 +11,8 @@ interface MyYulERC1155 {
     function supportsInterface(bytes4 interfaceId) external view returns(bool);
 
     function uri(uint256 id) external view returns(string memory);
+
+    function balanceOf(address account, uint256 id) external view returns(uint256);
 }
 
 contract CallMyYulERC1155 {
@@ -35,5 +37,9 @@ contract CallMyYulERC1155 {
 
     function callUri(address _addr, uint256 id) external view returns(string memory) {
         return MyYulERC1155(_addr).uri(id);
+    }
+    
+    function callBalanceOf(address _addr, address account, uint256 id) external view returns(uint256) {
+        return MyYulERC1155(_addr).balanceOf(account, id);
     }
 }

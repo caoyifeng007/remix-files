@@ -36,10 +36,20 @@ object "MyYulERC1155" {
             // Dispatcher
             switch selector()
             case 0x01ffc9a7 /* "supportsInterface(bytes4)" */ {
-                returnUint(decodeAsBytes4(0))
+                returnUint(supportsInterface(decodeAsBytes4(0)))
+            }
+            case 0x0e89341c /* "uri(uint256)" */  {
+                uri(decodeAsUint(0))
             }
             default {
                 revert(0, 0)
+            }
+
+            function supportsInterface(interfaceId) -> b {
+                let IERC165id := 0x01ffc9a7
+                let IERC1155id := 0xd9b67a26
+                let IERC1155MetadataURIid := 0x0e89341c
+                b := or(eq(interfaceId, IERC165id), or(eq(interfaceId, IERC1155id), eq(interfaceId, IERC1155MetadataURIid)))
             }
 
             /* ---------- calldata decoding functions ----------- */
@@ -53,6 +63,7 @@ object "MyYulERC1155" {
                 if and(v, 0x00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff) {
                     revert(0, 0)
                 }
+                v := div(v, 0x100000000000000000000000000000000000000000000000000000000)
             }
             function decodeAsAddress(offset) -> v {
                 v := decodeAsUint(offset)
@@ -67,6 +78,7 @@ object "MyYulERC1155" {
                 }
                 v := calldataload(pos)
             }
+
             /* ---------- calldata encoding functions ---------- */
             function returnUint(v) {
                 mstore(0, v)
@@ -78,10 +90,44 @@ object "MyYulERC1155" {
 
             /* -------- storage layout ---------- */
             function ownerPos() -> p { p := 0 }
-            function stringLengthPos() -> p { p := 1 }
-            function stringPos() -> p {
-                mstore(0x00, stringLengthPos())
+            function uriLengthPos() -> p { p := 1 }
+            function uriPos() -> p {
+                mstore(0x00, uriLengthPos())
                 p := keccak256(0x00, 0x20)
+            }
+
+            /* -------- storage access ---------- */
+            function owner() -> o {
+                o := sload(ownerPos())
+            }
+            function uri(id) {
+                let fptr := mload(0x40)
+                let optr := fptr
+                let uriLen := sload(uriLengthPos())
+                uriLen := div(sub(uriLen, 1), 2)
+
+                let loops := div(uriLen, 0x20)
+                if mod(uriLen, 0x20) {
+                    loops := add(loops, 1)
+                }
+                
+                let uriLocation := uriPos()
+
+                // construct return string
+                // step1 point to where the string starts in the return string not in memory
+                mstore(fptr, 0x20)
+                fptr := add(fptr, 0x20)
+                // step2 store string length
+                mstore(fptr, uriLen)
+                fptr := add(fptr, 0x20)
+                // step3 store the actual string
+                for {let i := 0} lt(i, loops) {i := add(i, 1)} {
+                    let v := sload(add(uriLocation, i))
+                    mstore(fptr, v)
+                    fptr := add(fptr, 0x20)
+                }
+                
+                return(optr, add(mul(loops, 0x20), 0x40))
             }
 
             /* ---------- utility functions ---------- */

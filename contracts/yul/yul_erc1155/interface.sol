@@ -8,7 +8,9 @@ interface MyYulERC1155 {
 
     function noname2() external view returns(uint256);
 
-    function supportsInterface(bytes4 interfaceId) external view returns(bytes4);
+    function supportsInterface(bytes4 interfaceId) external view returns(bool);
+
+    function uri(uint256 id) external view returns(string memory);
 }
 
 contract CallMyYulERC1155 {
@@ -27,12 +29,11 @@ contract CallMyYulERC1155 {
         return MyYulERC1155(_addr).noname2();
     }
 
-    function callSupportInterface(address _addr, bytes4 interfaceId) external view returns(bytes4) {
+    function callSupportInterface(address _addr, bytes4 interfaceId) external view returns(bool) {
         return MyYulERC1155(_addr).supportsInterface(interfaceId);
     }
-}
-// 0x92c72839
-// 000000000000000000000000f8e81d47203a594245e36c48e151709f0c19fbe8
-// 1234123400000000000000000000000000000000000000000000000000000000
 
-// 0000000000000000000000000000000000000000000000000000000012341234
+    function callUri(address _addr, uint256 id) external view returns(string memory) {
+        return MyYulERC1155(_addr).uri(id);
+    }
+}

@@ -13,6 +13,10 @@ interface MyYulERC1155 {
     function balanceOf(address account, uint256 id) external view returns(uint256);
 
     function balanceOfBatch(address[] memory accounts,uint256[] memory ids) external view returns(uint256[] memory);
+
+    function setApprovalForAll(address operator, bool approved) external;
+
+    function isApprovedForAll(address account, address operator) external view returns(bool);
 }
 
 contract CallMyYulERC1155 {
@@ -42,5 +46,12 @@ contract CallMyYulERC1155 {
     function callBalanceOfBatch(address _addr, address[] memory accounts,uint256[] memory ids) external view returns(uint256[] memory) {
         return MyYulERC1155(_addr).balanceOfBatch(accounts, ids);
     }
+
+    function callSetApprovalForAll(address _addr, address operator, bool approved) external {
+        return MyYulERC1155(_addr).setApprovalForAll(operator, approved);
+    }
+
+    function callIsApprovedForAll(address _addr, address account, address operator) external view returns(bool) {
+        return MyYulERC1155(_addr).isApprovedForAll(account, operator);
+    }
 }
-//

@@ -104,4 +104,19 @@ contract Test {
     function supportsInterface(bytes4 interfaceId) external pure returns (bytes4) {
         return interfaceId;
     }
+
+    function util2(address arg1, address arg2) external pure returns(bytes32) {
+        return keccak256(abi.encode(arg1, arg2));
+    }
+
+    // ApprovalForAll(address,address,bool)
+    function util3(string memory _str) external pure returns(bytes32) {
+        return keccak256(abi.encodePacked(_str));
+    }
+
+    event SomeLog(uint256 indexed a, uint256 indexed b);
+
+    function emitLog() external {
+        emit SomeLog(5, 6);
+    }
 }

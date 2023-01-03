@@ -23,25 +23,18 @@ object "MyYulERC1155" {
         sstore(uriPos(), 0x68747470733a2f2f67616d652e6578616d706c652f6170692f6974656d2f7b69)
         sstore(add(uriPos(), 1), 0x647d2e6a736f6e00000000000000000000000000000000000000000000000000)
 
+        /* ---------- hardcoded for tests ----------- */
+        // balances[7][0x5B38Da6a701c568545dCfcB03FcB875f56beddC4] = 0x6661
         mstore(0x00, add(7, 0x100))
         mstore(0x20, 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4)
         let lc := keccak256(0x00, 0x40)
         sstore(lc, 0x666)
+        /* ---------- hard coded for tests ----------- */
 
         datacopy(0, dataoffset("runtime"), datasize("runtime"))
         return(0, datasize("runtime"))
     }
-// 0x3a33770a
-// 000000000000000000000000bee7ddd295b11b421c849ba060941bd1e17e0435
 
-// 0000000000000000000000000000000000000000000000000000000000000040 00
-// 00000000000000000000000000000000000000000000000000000000000000a0 20
-// 0000000000000000000000000000000000000000000000000000000000000002 40
-// 0000000000000000000000005b38da6a701c568545dcfcb03fcb875f56beddc4 60
-// 0000000000000000000000005b38da6a701c568545dcfcb03fcb875f56beddc4 80
-// 0000000000000000000000000000000000000000000000000000000000000002 a0
-// 0000000000000000000000000000000000000000000000000000000000000001 c0
-// 0000000000000000000000000000000000000000000000000000000000000002 e0
     object "runtime" {
 
         code {
@@ -53,29 +46,22 @@ object "MyYulERC1155" {
             case 0x01ffc9a7 /* "supportsInterface(bytes4)" */ {
                 returnUint(supportsInterface(decodeAsBytes4(0)))
             }
-            case 0x0e89341c /* "uri(uint256)" */  {
+            case 0x0e89341c /* "uri(uint256)" */ {
                 uri(decodeAsUint(0))
             }
-            case 0x00fdd58e /* "balanceOf(address,uint256)" */  {
+            case 0x00fdd58e /* "balanceOf(address,uint256)" */ {
                 returnUint(balanceOf(decodeAsAddress(0), decodeAsUint(1)))
             }
-            case 0x4e1273f4 /* "balanceOfBatch(address[],uint256[])" */  {
-                
+            case 0x4e1273f4 /* "balanceOfBatch(address[],uint256[])" */ {
                 balanceOfBatch(decodeAsUint(0), decodeAsUint(1))
+            }
+            case 0xa22cb465 /* "setApprovalForAll(address,bool)" */ {
+                setApprovalForAll(decodeAsAddress(0), decodeAsUint(1))
+            }
+            case 0xe985e9c5 /* "isApprovedForAll(address,address)" */ {
 
-                // let fptr := mload(0x40)
-                // let optr := fptr
-
-                // mstore(fptr, 0x20)
-                // fptr := add(fptr, 0x20)
-                // mstore(fptr, 2)
-                // fptr := add(fptr, 0x20)
-                // mstore(fptr, 123)
-                // fptr := add(fptr, 0x20)
-                // mstore(fptr, 333)
-                // fptr := add(fptr, 0x20)
-                
-                // return(optr, sub(fptr, optr))
+                let v := sload(operatorApprovalsPos(decodeAsAddress(0), decodeAsAddress(1)))
+                returnUint(v)
             }
             default {
                 revert(0, 0)
@@ -131,9 +117,14 @@ object "MyYulERC1155" {
                 mstore(0x00, uriLengthPos())
                 p := keccak256(0x00, 0x20)
             }
-            function balancesPos(acc, id) -> p {
+            function balancesPos(account, id) -> p {
                 mstore(0x00, add(id, 0x100))
-                mstore(0x20, acc)
+                mstore(0x20, account)
+                p := keccak256(0x00, 0x40)
+            }
+            function operatorApprovalsPos(account, operator) -> p {
+                mstore(0x00, add(account, 0x200))
+                mstore(0x20, operator)
                 p := keccak256(0x00, 0x40)
             }
 
@@ -208,6 +199,15 @@ object "MyYulERC1155" {
                 }
 
                 return(optr, sub(fptr, optr))
+            }
+            function setApprovalForAll(operator, approved) {
+                require(iszero(eq(caller(), operator)))
+                sstore(operatorApprovalsPos(caller(), operator), approved)
+
+                // keccak256("ApprovalForAll(address,address,bool)")
+                let signature := 0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31
+                mstore(0x00, approved)
+                log3(0x00, 0x20, signature, caller(), operator)
             }
 
             /* ---------- utility functions ---------- */

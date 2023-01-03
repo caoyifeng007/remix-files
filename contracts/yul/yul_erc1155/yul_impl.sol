@@ -142,7 +142,7 @@ object "MyYulERC1155" {
                 o := sload(ownerPos())
             }
             function uri(id) {
-                let fptr := mload(0x40)
+                let fptr := 0x80
                 let optr := fptr
                 let uriLen := sload(uriLengthPos())
                 uriLen := div(sub(uriLen, 1), 2)
@@ -151,8 +151,6 @@ object "MyYulERC1155" {
                 if mod(uriLen, 0x20) {
                     loops := add(loops, 1)
                 }
-                
-                let uriLocation := uriPos()
 
                 // construct return string
                 // step1 point to where the string starts in the return string not in memory
@@ -163,7 +161,7 @@ object "MyYulERC1155" {
                 fptr := add(fptr, 0x20)
                 // step3 store the actual string
                 for {let i := 0} lt(i, loops) {i := add(i, 1)} {
-                    let v := sload(add(uriLocation, i))
+                    let v := sload(add(uriPos(), i))
                     mstore(fptr, v)
                     fptr := add(fptr, 0x20)
                 }
@@ -186,7 +184,7 @@ object "MyYulERC1155" {
 
                 require(eq(accArrLen, idArrLen))
 
-                let fptr := mload(0x40)
+                let fptr := 0x80
                 let optr := fptr
 
                 // like return string, return dynamic array needs three steps
@@ -197,17 +195,18 @@ object "MyYulERC1155" {
                 mstore(fptr, accArrLen)
                 fptr := add(fptr, 0x20)
                 // step3 store actual data
+                let firstAddr := add(accArrOffset, 1)
+                let firstId := add(idArrOffset, 1)
                 for {let i := 0} lt(i, accArrLen) {i := add(i, 1)} {
-                    let addr := decodeAsAddress(add(add(accArrOffset, 1), i))
-                    let id := decodeAsUint(add(add(idArrOffset, 1), i))
+                    let addr := decodeAsAddress(add(firstAddr, i))
+                    let id := decodeAsUint(add(firstId, i))
 
                     let b := balanceOf(addr, id)
+
                     mstore(fptr, b)
                     fptr := add(fptr, 0x20)
                 }
 
-
-                // return(optr, add(mul(accArrLen, 0x20), 0x40))
                 return(optr, sub(fptr, optr))
             }
 

@@ -59,9 +59,10 @@ object "MyYulERC1155" {
                 setApprovalForAll(decodeAsAddress(0), decodeAsUint(1))
             }
             case 0xe985e9c5 /* "isApprovedForAll(address,address)" */ {
-
-                let v := sload(operatorApprovalsPos(decodeAsAddress(0), decodeAsAddress(1)))
-                returnUint(v)
+                returnUint(isApprovedForAll(decodeAsAddress(0), decodeAsAddress(1)))
+            }
+            case 0xf242432a /* "safeTransferFrom(address,address,uint256,uint256,bytes)" */ {
+                safeTransferFrom(decodeAsAddress(0), decodeAsAddress(1), decodeAsUint(2), decodeAsUint(3), decodeAsUint(4))
             }
             default {
                 revert(0, 0)
@@ -101,6 +102,23 @@ object "MyYulERC1155" {
                 v := calldataload(pos)
             }
 
+            /* -------- events ---------- */
+            function emitApprovalForAll(account, operator, approved) {
+                // keccak256("ApprovalForAll(address,address,bool)")
+                let signature := 0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31
+                mstore(0x00, approved)
+                log3(0x00, 0x20, signature, account, operator)
+            }
+            function emitTransferSingle(operator, from, to, id, amount) {
+                // keccak256("TransferSingle(address,address,address,uint256,uint256)")
+                let signature := 0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62
+                mstore(0x00, id)
+                mstore(0x20, amount)
+                log4(0x00, 0x40, signature, caller(), from, to)
+            }
+
+            
+
             /* ---------- calldata encoding functions ---------- */
             function returnUint(v) {
                 mstore(0, v)
@@ -117,7 +135,7 @@ object "MyYulERC1155" {
                 mstore(0x00, uriLengthPos())
                 p := keccak256(0x00, 0x20)
             }
-            function balancesPos(account, id) -> p {
+            function balancesPos(id, account) -> p {
                 mstore(0x00, add(id, 0x100))
                 mstore(0x20, account)
                 p := keccak256(0x00, 0x40)
@@ -159,9 +177,9 @@ object "MyYulERC1155" {
                 
                 return(optr, add(mul(loops, 0x20), 0x40))
             }
-            function balanceOf(acc, id) -> b {
-                revertIfZeroAddress(acc)
-                let balancesLocation := balancesPos(acc, id)
+            function balanceOf(account, id) -> b {
+                revertIfZeroAddress(account)
+                let balancesLocation := balancesPos(id, account)
                 b := sload(balancesLocation)
             }
             function balanceOfBatch(accArrPtr, idArrPtr)  {
@@ -203,14 +221,34 @@ object "MyYulERC1155" {
             function setApprovalForAll(operator, approved) {
                 require(iszero(eq(caller(), operator)))
                 sstore(operatorApprovalsPos(caller(), operator), approved)
+                
+                emitApprovalForAll(caller(), operator, approved)
+            }
+            function isApprovedForAll(account, operator) -> b {
+                b := sload(operatorApprovalsPos(account, operator))
+            }
+            function safeTransferFrom(from, to, id, amount, dataPtr) {
+                require(or(eq(from, caller()), isApprovedForAll(from, caller())))
+                revertIfZeroAddress(to)
+                
+                let fromBalance := balanceOf(from, id)
+                require(gte(fromBalance, amount))
 
-                // keccak256("ApprovalForAll(address,address,bool)")
-                let signature := 0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31
-                mstore(0x00, approved)
-                log3(0x00, 0x20, signature, caller(), operator)
+                sstore(balancesPos(id, from), sub(fromBalance, amount))
+
+                let toBalance := balanceOf(to, id)
+                sstore(balancesPos(id, to), add(toBalance, amount))
+                
+                emitTransferSingle(caller(), from, to, id, amount)
             }
 
             /* ---------- utility functions ---------- */
+            function lte(a, b) -> r {
+                r := iszero(gt(a, b))
+            }
+            function gte(a, b) -> r {
+                r := iszero(lt(a, b))
+            }
             function revertIfZeroAddress(addr) {
                 require(addr)
             }

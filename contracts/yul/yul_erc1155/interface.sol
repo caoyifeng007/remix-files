@@ -17,6 +17,8 @@ interface MyYulERC1155 {
     function setApprovalForAll(address operator, bool approved) external;
 
     function isApprovedForAll(address account, address operator) external view returns(bool);
+
+    function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes memory data) external;
 }
 
 contract CallMyYulERC1155 {
@@ -53,5 +55,9 @@ contract CallMyYulERC1155 {
 
     function callIsApprovedForAll(address _addr, address account, address operator) external view returns(bool) {
         return MyYulERC1155(_addr).isApprovedForAll(account, operator);
+    }
+
+    function callSafeTransferFrom(address _addr, address from, address to, uint256 id, uint256 amount, bytes memory data) external {
+        return MyYulERC1155(_addr).safeTransferFrom(from, to, id, amount, data);
     }
 }

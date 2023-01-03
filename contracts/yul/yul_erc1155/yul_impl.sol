@@ -26,7 +26,7 @@ object "MyYulERC1155" {
         /* ---------- hardcoded for tests ----------- */
         // balances[7][0x5B38Da6a701c568545dCfcB03FcB875f56beddC4] = 0x6661
         mstore(0x00, add(7, 0x100))
-        mstore(0x20, 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4)
+        mstore(0x20, 0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8)
         let lc := keccak256(0x00, 0x40)
         sstore(lc, 0x666)
         /* ---------- hard coded for tests ----------- */
@@ -227,6 +227,42 @@ object "MyYulERC1155" {
             function isApprovedForAll(account, operator) -> b {
                 b := sload(operatorApprovalsPos(account, operator))
             }
+            function doSafeTransferAcceptanceCheck(operator, from, to, id, amount, dataPtr) {
+                if extcodesize(to) {
+                    let fptr := 0x80
+                    let optr := fptr
+
+                    // keccak256("onERC1155Received(address,address,uint256,uint256,bytes)")
+                    let signature := 0xf23a6e61
+                    mstore(fptr, signature)
+                    fptr := add(fptr, 0x20)
+
+                    mstore(fptr, operator)
+                    fptr := add(fptr, 0x20)
+
+                    mstore(fptr, from)
+                    fptr := add(fptr, 0x20)
+
+                    mstore(fptr, id)
+                    fptr := add(fptr, 0x20)
+
+                    mstore(fptr, amount)
+                    fptr := add(fptr, 0x20)
+
+                    mstore(fptr, 0xa0)
+                    fptr := add(fptr, 0x20)
+
+                    let dataLenOffset := div(dataPtr, 0x20)
+                    let dataLen := decodeAsUint(dataLenOffset)
+                    let dataOffse := add(dataLenOffset, 1)
+
+                    for {let i := 0} lt(i, dataLen) {i := add(i, 1)} {
+                        mstore(fptr, decodeAsUint(add(dataOffse, i)))
+                        fptr := add(fptr, 0x20)
+                    }
+                    let response := call(gas(), to, 0, optr, sub(fptr, optr), 0x00, 4)
+                }
+            }
             function safeTransferFrom(from, to, id, amount, dataPtr) {
                 require(or(eq(from, caller()), isApprovedForAll(from, caller())))
                 revertIfZeroAddress(to)
@@ -240,6 +276,8 @@ object "MyYulERC1155" {
                 sstore(balancesPos(id, to), add(toBalance, amount))
                 
                 emitTransferSingle(caller(), from, to, id, amount)
+
+                doSafeTransferAcceptanceCheck(caller(), from, to, id, amount, dataPtr)
             }
 
             /* ---------- utility functions ---------- */
@@ -248,6 +286,10 @@ object "MyYulERC1155" {
             }
             function gte(a, b) -> r {
                 r := iszero(lt(a, b))
+            }
+            function safeAdd(a, b) -> r {
+                r := add(a, b)
+                if or(lt(r, a), lt(r, b)) { revert(0, 0) }
             }
             function revertIfZeroAddress(addr) {
                 require(addr)

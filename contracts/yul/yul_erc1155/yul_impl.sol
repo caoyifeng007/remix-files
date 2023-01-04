@@ -24,7 +24,7 @@ object "MyYulERC1155" {
         sstore(add(uriPos(), 1), 0x647d2e6a736f6e00000000000000000000000000000000000000000000000000)
 
         /* ---------- hardcoded for tests ----------- */
-        // balances[7][0x5B38Da6a701c568545dCfcB03FcB875f56beddC4] = 0x6661
+        // balances[7][address of CallMyYulERC1155] = 0x6661
         mstore(0x00, add(7, 0x100))
         mstore(0x20, 0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8)
         let lc := keccak256(0x00, 0x40)
@@ -228,9 +228,11 @@ object "MyYulERC1155" {
                 b := sload(operatorApprovalsPos(account, operator))
             }
             function doSafeTransferAcceptanceCheck(operator, from, to, id, amount, dataPtr) {
+
                 if extcodesize(to) {
                     let fptr := 0x80
                     let optr := fptr
+                    
 
                     // keccak256("onERC1155Received(address,address,uint256,uint256,bytes)")
                     let signature := 0xf23a6e61
@@ -252,30 +254,42 @@ object "MyYulERC1155" {
                     mstore(fptr, 0xa0)
                     fptr := add(fptr, 0x20)
 
-                    let dataLenOffset := div(dataPtr, 0x20)
-                    let dataLen := decodeAsUint(dataLenOffset)
-                    let dataOffse := add(dataLenOffset, 1)
+                    // dataPtr should be like 0x20, means its offset in calldata
+                    // don't forget there are four bytes of function selector
+                    let dataLenPtr := add(dataPtr, 4)
+                    let dataLen := calldataload(dataLenPtr)
+                    let totalLen := add(dataLen, 0x20)
 
-                    for {let i := 0} lt(i, dataLen) {i := add(i, 1)} {
-                        mstore(fptr, decodeAsUint(add(dataOffse, i)))
-                        fptr := add(fptr, 0x20)
-                    }
+                    
+
+                    // calldatacopy(t, f, s)
+                    // copy s bytes from calldata at position f to mem at position t
+                    calldatacopy(fptr, dataLenPtr, totalLen)
+                    fptr := add(fptr, totalLen)
+
+                    // mstore(0x00, totalLen)
+                    // return(add(fptr, 0x20), 0x20)
+
                     let response := call(gas(), to, 0, optr, sub(fptr, optr), 0x00, 4)
+                    return(0x00, 0x20)
                 }
+
+                mstore(0x00, 0x123)
+                return(0x00, 0x20)
             }
             function safeTransferFrom(from, to, id, amount, dataPtr) {
-                require(or(eq(from, caller()), isApprovedForAll(from, caller())))
-                revertIfZeroAddress(to)
+                // require(or(eq(from, caller()), isApprovedForAll(from, caller())))
+                // revertIfZeroAddress(to)
                 
-                let fromBalance := balanceOf(from, id)
-                require(gte(fromBalance, amount))
+                // let fromBalance := balanceOf(from, id)
+                // require(gte(fromBalance, amount))
 
-                sstore(balancesPos(id, from), sub(fromBalance, amount))
+                // sstore(balancesPos(id, from), sub(fromBalance, amount))
 
-                let toBalance := balanceOf(to, id)
-                sstore(balancesPos(id, to), add(toBalance, amount))
+                // let toBalance := balanceOf(to, id)
+                // sstore(balancesPos(id, to), add(toBalance, amount))
                 
-                emitTransferSingle(caller(), from, to, id, amount)
+                // emitTransferSingle(caller(), from, to, id, amount)
 
                 doSafeTransferAcceptanceCheck(caller(), from, to, id, amount, dataPtr)
             }

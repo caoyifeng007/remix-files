@@ -2,6 +2,31 @@
 
 pragma solidity ^0.8.0;
 
+// import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+
+contract ReceiverTest {
+    bytes public receivedData;
+
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external returns (bytes4) {
+        receivedData = data;
+        return this.onERC1155Received.selector;
+    }
+
+    function onERC1155BatchReceived(
+        address operator,
+        address from,
+        uint256[] calldata ids,
+        uint256[] calldata values,
+        bytes calldata data
+    ) external returns (bytes4) {}
+}
+
 interface MyYulERC1155 {
 
     function noname() external view returns(bytes32);
@@ -18,7 +43,9 @@ interface MyYulERC1155 {
 
     function isApprovedForAll(address account, address operator) external view returns(bool);
 
-    function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes memory data) external;
+    // function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes memory data) external;
+
+    function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes memory data) external view returns(bytes32);
 }
 
 contract CallMyYulERC1155 {
@@ -57,7 +84,11 @@ contract CallMyYulERC1155 {
         return MyYulERC1155(_addr).isApprovedForAll(account, operator);
     }
 
-    function callSafeTransferFrom(address _addr, address from, address to, uint256 id, uint256 amount, bytes memory data) external {
+    // function callSafeTransferFrom(address _addr, address from, address to, uint256 id, uint256 amount, bytes memory data) external {
+    //     return MyYulERC1155(_addr).safeTransferFrom(from, to, id, amount, data);
+    // }
+
+    function callSafeTransferFrom(address _addr, address from, address to, uint256 id, uint256 amount, bytes memory data) external view returns(bytes32) {
         return MyYulERC1155(_addr).safeTransferFrom(from, to, id, amount, data);
     }
 }

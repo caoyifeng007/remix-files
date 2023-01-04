@@ -64,6 +64,9 @@ object "MyYulERC1155" {
             case 0xf242432a /* "safeTransferFrom(address,address,uint256,uint256,bytes)" */ {
                 safeTransferFrom(decodeAsAddress(0), decodeAsAddress(1), decodeAsUint(2), decodeAsUint(3), decodeAsUint(4))
             }
+            case 0x2eb2c2d6 /* "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)" */ {
+                safeBatchTransferFrom(decodeAsAddress(0), decodeAsAddress(1), decodeAsUint(2), decodeAsUint(3), decodeAsUint(4))
+            }
             default {
                 revert(0, 0)
             }
@@ -267,13 +270,12 @@ object "MyYulERC1155" {
                     let response := call(gas(), to, 0, add(optr, 28), sub(fptr, optr), 0x00, 4)
                     require(response)
 
-                    let returnSignature := div(mload(0x00), 0x00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
+                    let returnSignature := div(mload(0x00), 0x100000000000000000000000000000000000000000000000000000000)
                     require(eq(signature, returnSignature))
 
                 }
 
             }
-
             function safeTransferFrom(from, to, id, amount, dataPtr) {
                 require(or(eq(from, caller()), isApprovedForAll(from, caller())))
                 revertIfZeroAddress(to)
@@ -291,6 +293,10 @@ object "MyYulERC1155" {
                 doSafeTransferAcceptanceCheck(caller(), from, to, id, amount, dataPtr)
 
                 return(0x00, 0x20)
+            }
+            function safeBatchTransferFrom(from, to, idArrPtr, amountArrPtr, dataPtr) {
+                require(or(eq(from, caller()), isApprovedForAll(from, caller())))
+                revertIfZeroAddress(to)
             }
 
             /* ---------- utility functions ---------- */

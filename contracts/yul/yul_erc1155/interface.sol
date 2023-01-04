@@ -16,6 +16,7 @@ contract ReceiverTest {
     ) external returns (bytes4) {
         receivedData = data;
         return this.onERC1155Received.selector;
+        // return bytes4(data);
     }
 
     function onERC1155BatchReceived(
@@ -43,9 +44,8 @@ interface MyYulERC1155 {
 
     function isApprovedForAll(address account, address operator) external view returns(bool);
 
-    // function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes memory data) external;
+    function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes memory data) external;
 
-    function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes memory data) external view returns(bytes32);
 }
 
 contract CallMyYulERC1155 {
@@ -84,11 +84,8 @@ contract CallMyYulERC1155 {
         return MyYulERC1155(_addr).isApprovedForAll(account, operator);
     }
 
-    // function callSafeTransferFrom(address _addr, address from, address to, uint256 id, uint256 amount, bytes memory data) external {
-    //     return MyYulERC1155(_addr).safeTransferFrom(from, to, id, amount, data);
-    // }
-
-    function callSafeTransferFrom(address _addr, address from, address to, uint256 id, uint256 amount, bytes memory data) external view returns(bytes32) {
+    function callSafeTransferFrom(address _addr, address from, address to, uint256 id, uint256 amount, bytes memory data) external {
         return MyYulERC1155(_addr).safeTransferFrom(from, to, id, amount, data);
     }
+
 }

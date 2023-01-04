@@ -26,7 +26,7 @@ object "MyYulERC1155" {
         /* ---------- hardcoded for tests ----------- */
         // balances[7][address of CallMyYulERC1155] = 0x6661
         mstore(0x00, add(7, 0x100))
-        mstore(0x20, 0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8)
+        mstore(0x20, 0xDA07165D4f7c84EEEfa7a4Ff439e039B7925d3dF)
         let lc := keccak256(0x00, 0x40)
         sstore(lc, 0x666)
         /* ---------- hard coded for tests ----------- */
@@ -233,7 +233,6 @@ object "MyYulERC1155" {
                     let fptr := 0x80
                     let optr := fptr
                     
-
                     // keccak256("onERC1155Received(address,address,uint256,uint256,bytes)")
                     let signature := 0xf23a6e61
                     mstore(fptr, signature)
@@ -258,40 +257,40 @@ object "MyYulERC1155" {
                     // don't forget there are four bytes of function selector
                     let dataLenPtr := add(dataPtr, 4)
                     let dataLen := calldataload(dataLenPtr)
-                    let totalLen := add(dataLen, 0x20)
-
-                    
+                    let totalLen := add(dataLen, 0x20)               
 
                     // calldatacopy(t, f, s)
                     // copy s bytes from calldata at position f to mem at position t
                     calldatacopy(fptr, dataLenPtr, totalLen)
                     fptr := add(fptr, totalLen)
 
-                    // mstore(0x00, totalLen)
-                    // return(add(fptr, 0x20), 0x20)
+                    let response := call(gas(), to, 0, add(optr, 28), sub(fptr, optr), 0x00, 4)
+                    require(response)
 
-                    let response := call(gas(), to, 0, optr, sub(fptr, optr), 0x00, 4)
-                    return(0x00, 0x20)
+                    let returnSignature := div(mload(0x00), 0x00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
+                    require(eq(signature, returnSignature))
+
                 }
 
-                mstore(0x00, 0x123)
-                return(0x00, 0x20)
             }
+
             function safeTransferFrom(from, to, id, amount, dataPtr) {
-                // require(or(eq(from, caller()), isApprovedForAll(from, caller())))
-                // revertIfZeroAddress(to)
+                require(or(eq(from, caller()), isApprovedForAll(from, caller())))
+                revertIfZeroAddress(to)
                 
-                // let fromBalance := balanceOf(from, id)
-                // require(gte(fromBalance, amount))
+                let fromBalance := balanceOf(from, id)
+                require(gte(fromBalance, amount))
 
-                // sstore(balancesPos(id, from), sub(fromBalance, amount))
+                sstore(balancesPos(id, from), sub(fromBalance, amount))
 
-                // let toBalance := balanceOf(to, id)
-                // sstore(balancesPos(id, to), add(toBalance, amount))
+                let toBalance := balanceOf(to, id)
+                sstore(balancesPos(id, to), add(toBalance, amount))
                 
-                // emitTransferSingle(caller(), from, to, id, amount)
+                emitTransferSingle(caller(), from, to, id, amount)
 
                 doSafeTransferAcceptanceCheck(caller(), from, to, id, amount, dataPtr)
+
+                return(0x00, 0x20)
             }
 
             /* ---------- utility functions ---------- */

@@ -26,7 +26,7 @@ object "MyYulERC1155" {
         /* ---------- hardcoded for tests ----------- */
         // balances[7][address of CallMyYulERC1155] = 0x6661
         mstore(0x00, add(7, 0x100))
-        mstore(0x20, 0xDA07165D4f7c84EEEfa7a4Ff439e039B7925d3dF)
+        mstore(0x20, 0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8)
         let lc := keccak256(0x00, 0x40)
         sstore(lc, 0x666)
         /* ---------- hard coded for tests ----------- */
@@ -186,13 +186,9 @@ object "MyYulERC1155" {
                 b := sload(balancesLocation)
             }
             function balanceOfBatch(accArrPtr, idArrPtr)  {
-                // for example, idArrPtr's value is 0x40 then the length of accArr will be the 3rd slot in calldata
-                // it should be pass 2 to decodeAsUint() get that length
-                let accArrOffset := div(accArrPtr, 0x20)
-                let idArrOffset := div(idArrPtr, 0x20)
 
-                let accArrLen := decodeAsUint(accArrOffset)
-                let idArrLen := decodeAsUint(idArrOffset)
+                let accArrLen, firstAddr := getU256ArrLenAndDptr(accArrPtr)
+                let idArrLen, firstId := getU256ArrLenAndDptr(idArrPtr)
 
                 require(eq(accArrLen, idArrLen))
 
@@ -207,8 +203,7 @@ object "MyYulERC1155" {
                 mstore(fptr, accArrLen)
                 fptr := add(fptr, 0x20)
                 // step3 store actual data
-                let firstAddr := add(accArrOffset, 1)
-                let firstId := add(idArrOffset, 1)
+                
                 for {let i := 0} lt(i, accArrLen) {i := add(i, 1)} {
                     let addr := decodeAsAddress(add(firstAddr, i))
                     let id := decodeAsUint(add(firstId, i))
@@ -276,10 +271,7 @@ object "MyYulERC1155" {
                 }
 
             }
-            function safeTransferFrom(from, to, id, amount, dataPtr) {
-                require(or(eq(from, caller()), isApprovedForAll(from, caller())))
-                revertIfZeroAddress(to)
-                
+            function _safeTransferFrom(from, to, id, amount) {
                 let fromBalance := balanceOf(from, id)
                 require(gte(fromBalance, amount))
 
@@ -287,6 +279,12 @@ object "MyYulERC1155" {
 
                 let toBalance := balanceOf(to, id)
                 sstore(balancesPos(id, to), add(toBalance, amount))
+            }
+            function safeTransferFrom(from, to, id, amount, dataPtr) {
+                require(or(eq(from, caller()), isApprovedForAll(from, caller())))
+                revertIfZeroAddress(to)
+                
+                _safeTransferFrom(from, to, id, amount)
                 
                 emitTransferSingle(caller(), from, to, id, amount)
 
@@ -315,6 +313,16 @@ object "MyYulERC1155" {
             }
             function require(condition) {
                 if iszero(condition) { revert(0, 0) }
+            }
+            function getU256ArrLenAndDptr(arrPtr) -> arrLen, dataPtr {
+                // for example, if arrPtr's value is point to 0x40
+                // then the length of arrPtr1 will be stored in the 3rd slot of calldata
+                // at this moment, we need to pass 2 to decodeAsUint() function to get arrPtr's length
+
+                let dataLenPtr := div(arrPtr, 0x20)
+                arrLen := decodeAsUint(dataLenPtr)
+
+                dataPtr := add(dataLenPtr, 1)
             }
 
 

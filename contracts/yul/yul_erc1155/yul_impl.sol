@@ -28,7 +28,12 @@ object "MyYulERC1155" {
         mstore(0x00, add(7, 0x100))
         mstore(0x20, 0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8)
         let lc := keccak256(0x00, 0x40)
-        sstore(lc, 0x666)
+        sstore(lc, 100)
+
+        mstore(0x00, add(8, 0x100))
+        mstore(0x20, 0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8)
+        lc := keccak256(0x00, 0x40)
+        sstore(lc, 200)
         /* ---------- hard coded for tests ----------- */
 
         datacopy(0, dataoffset("runtime"), datasize("runtime"))
@@ -119,6 +124,15 @@ object "MyYulERC1155" {
                 mstore(0x20, amount)
                 log4(0x00, 0x40, signature, caller(), from, to)
             }
+            function emitTransferBatch(operator, from, to, idArrPtr, amountArrPtr) {
+                // keccak256("TransferBatch(address,address,address,uint256[],uint256[])")
+                let signature := 0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb
+                
+                let fptr := 0x80
+                fptr := copyCalldata2Mem(fptr, idArrPtr)
+                fptr := copyCalldata2Mem(fptr, amountArrPtr)
+                log4(0x80, sub(fptr, 0x80), signature, caller(), from, to)
+            }
 
             
 
@@ -187,8 +201,8 @@ object "MyYulERC1155" {
             }
             function balanceOfBatch(accArrPtr, idArrPtr)  {
 
-                let accArrLen, firstAddr := getU256ArrLenAndDptr(accArrPtr)
-                let idArrLen, firstId := getU256ArrLenAndDptr(idArrPtr)
+                let accArrLen, firstAddrPtr := getU256ArrLenAndDptr(accArrPtr)
+                let idArrLen, firstIdPtr := getU256ArrLenAndDptr(idArrPtr)
 
                 require(eq(accArrLen, idArrLen))
 
@@ -205,8 +219,8 @@ object "MyYulERC1155" {
                 // step3 store actual data
                 
                 for {let i := 0} lt(i, accArrLen) {i := add(i, 1)} {
-                    let addr := decodeAsAddress(add(firstAddr, i))
-                    let id := decodeAsUint(add(firstId, i))
+                    let addr := decodeAsAddress(add(firstAddrPtr, i))
+                    let id := decodeAsUint(add(firstIdPtr, i))
 
                     let b := balanceOf(addr, id)
 
@@ -225,7 +239,7 @@ object "MyYulERC1155" {
             function isApprovedForAll(account, operator) -> b {
                 b := sload(operatorApprovalsPos(account, operator))
             }
-            function doSafeTransferAcceptanceCheck(operator, from, to, id, amount, dataPtr) {
+            function doSafeTransferAcceptanceCheck(operator, from, to, id, amount, arrPtr) {
 
                 if extcodesize(to) {
                     let fptr := 0x80
@@ -251,16 +265,44 @@ object "MyYulERC1155" {
                     mstore(fptr, 0xa0)
                     fptr := add(fptr, 0x20)
 
-                    // dataPtr should be like 0x20, means its offset in calldata
-                    // don't forget there are four bytes of function selector
-                    let dataLenPtr := add(dataPtr, 4)
-                    let dataLen := calldataload(dataLenPtr)
-                    let totalLen := add(dataLen, 0x20)               
+                    fptr := copyCalldata2Mem(fptr, arrPtr)
 
-                    // calldatacopy(t, f, s)
-                    // copy s bytes from calldata at position f to mem at position t
-                    calldatacopy(fptr, dataLenPtr, totalLen)
-                    fptr := add(fptr, totalLen)
+                    let response := call(gas(), to, 0, add(optr, 28), sub(fptr, optr), 0x00, 4)
+                    require(response)
+
+                    let returnSignature := div(mload(0x00), 0x100000000000000000000000000000000000000000000000000000000)
+                    require(eq(signature, returnSignature))
+
+                }
+
+            }
+            function doSafeBatchTransferAcceptanceCheck(operator, from, to, idArrPtr, amountArrPtr, dataArrPtr) {
+
+                if extcodesize(to) {
+                    let fptr := 0x80
+                    let optr := fptr
+
+                    // keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)")
+                    let signature := 0xbc197c81
+                    mstore(fptr, signature)
+                    fptr := add(fptr, 0x20)
+
+                    mstore(fptr, operator)
+                    fptr := add(fptr, 0x20)
+
+                    mstore(fptr, from)
+                    fptr := add(fptr, 0x20)
+
+                    mstore(fptr, id)
+                    fptr := add(fptr, 0x20)
+
+                    mstore(fptr, amount)
+                    fptr := add(fptr, 0x20)
+
+                    mstore(fptr, 0xa0)
+                    fptr := add(fptr, 0x20)
+
+                    fptr := copyCalldata2Mem(fptr, arrPtr)
 
                     let response := call(gas(), to, 0, add(optr, 28), sub(fptr, optr), 0x00, 4)
                     require(response)
@@ -280,7 +322,7 @@ object "MyYulERC1155" {
                 let toBalance := balanceOf(to, id)
                 sstore(balancesPos(id, to), add(toBalance, amount))
             }
-            function safeTransferFrom(from, to, id, amount, dataPtr) {
+            function safeTransferFrom(from, to, id, amount, dataArrPtr) {
                 require(or(eq(from, caller()), isApprovedForAll(from, caller())))
                 revertIfZeroAddress(to)
                 
@@ -288,13 +330,30 @@ object "MyYulERC1155" {
                 
                 emitTransferSingle(caller(), from, to, id, amount)
 
-                doSafeTransferAcceptanceCheck(caller(), from, to, id, amount, dataPtr)
+                doSafeTransferAcceptanceCheck(caller(), from, to, id, amount, dataArrPtr)
 
                 return(0x00, 0x20)
             }
-            function safeBatchTransferFrom(from, to, idArrPtr, amountArrPtr, dataPtr) {
+            function safeBatchTransferFrom(from, to, idArrPtr, amountArrPtr, dataArrPtr) {
                 require(or(eq(from, caller()), isApprovedForAll(from, caller())))
                 revertIfZeroAddress(to)
+
+                let idArrLen, firstIdPtr := getU256ArrLenAndDptr(idArrPtr)
+                let amountArrLen, firstAmountPtr := getU256ArrLenAndDptr(amountArrPtr)
+                require(eq(idArrLen, amountArrLen))
+
+                for {let i := 0} lt(i, idArrLen) {i := add(i, 1)} {
+                    
+                    let id := decodeAsUint(add(firstIdPtr, i))
+                    let amount := decodeAsUint(add(firstAmountPtr, i))
+                    _safeTransferFrom(from, to, id, amount)
+                }
+
+                emitTransferBatch(caller(), from, to, idArrPtr, amountArrPtr)
+
+                doSafeBatchTransferAcceptanceCheck(caller(), from, to, idArrPtr, amountArrPtr, dataArrPtr)
+
+                return(0x00, 0x20)
             }
 
             /* ---------- utility functions ---------- */
@@ -323,6 +382,19 @@ object "MyYulERC1155" {
                 arrLen := decodeAsUint(dataLenPtr)
 
                 dataPtr := add(dataLenPtr, 1)
+            }
+            function copyCalldata2Mem(fptr, calldataArrPtr) -> newFptr {
+                // dataPtr should be like 0x20, means its offset in calldata
+                // don't forget there are four bytes of function selector
+
+                let dataLenPtr := add(calldataArrPtr, 4)
+                let dataLen := calldataload(dataLenPtr)
+                let totalLen := add(dataLen, 0x20)               
+
+                // calldatacopy(t, f, s)
+                // copy s bytes from calldata at position f to mem at position t
+                calldatacopy(fptr, dataLenPtr, totalLen)
+                newFptr := add(fptr, totalLen)
             }
 
 

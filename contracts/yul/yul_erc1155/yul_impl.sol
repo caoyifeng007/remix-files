@@ -70,7 +70,8 @@ object "MyYulERC1155" {
                 safeTransferFrom(decodeAsAddress(0), decodeAsAddress(1), decodeAsUint(2), decodeAsUint(3), decodeAsUint(4))
             }
             case 0x2eb2c2d6 /* "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)" */ {
-                safeBatchTransferFrom(decodeAsAddress(0), decodeAsAddress(1), decodeAsUint(2), decodeAsUint(3), decodeAsUint(4))
+                safeBatchTransferFrom(decodeAsAddress(0), decodeAsAddress(1), add(decodeAsUint(2), 4), add(decodeAsUint(3), 4), add(decodeAsUint(4), 4))
+                // safeBatchTransferFrom(decodeAsAddress(0), decodeAsAddress(1), decodeAsUint(2), decodeAsUint(3), decodeAsUint(4))
             }
             default {
                 revert(0, 0)
@@ -129,8 +130,9 @@ object "MyYulERC1155" {
                 let signature := 0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb
                 
                 let fptr := 0x80
-                fptr := copyCalldata2Mem(fptr, idArrPtr)
-                fptr := copyCalldata2Mem(fptr, amountArrPtr)
+                // todo
+                // fptr := copyCalldata2Mem(fptr, idArrPtr)
+                // fptr := copyCalldata2Mem(fptr, amountArrPtr)
                 log4(0x80, sub(fptr, 0x80), signature, caller(), from, to)
             }
 
@@ -265,7 +267,8 @@ object "MyYulERC1155" {
                     mstore(fptr, 0xa0)
                     fptr := add(fptr, 0x20)
 
-                    fptr := copyCalldata2Mem(fptr, arrPtr)
+                    // todo
+                    // fptr := copyCalldata2Mem(fptr, arrPtr)
 
                     let response := call(gas(), to, 0, add(optr, 28), sub(fptr, optr), 0x00, 4)
                     require(response)
@@ -283,26 +286,43 @@ object "MyYulERC1155" {
                     let optr := fptr
 
                     // keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)")
-                    let signature := 0xbc197c81
+                    // let signature := 0xbc197c81
+
+                    // keccak256("onERC1155BatchReceived(address,address,uint256[])")
+                    let signature := 0x549a98fe
                     mstore(fptr, signature)
                     fptr := add(fptr, 0x20)
 
+                    // 0x00 ... 0x1f
+                    // construct operator
                     mstore(fptr, operator)
                     fptr := add(fptr, 0x20)
 
+                    // 0x20 ... 0x3f
+                    // construct from
                     mstore(fptr, from)
                     fptr := add(fptr, 0x20)
 
-                    mstore(fptr, id)
-                    fptr := add(fptr, 0x20)
+                    
+                    let idArrLen, amountArrLen, dataArrLen, _
+                    idArrLen, _ := getU256ArrLenAndDptr(idArrPtr)
+                    // amountArrLen, _ := getU256ArrLenAndDptr(amountArrPtr)
+                    // dataArrLen, _ := getU256ArrLenAndDptr(dataArrPtr)
 
-                    mstore(fptr, amount)
+                    // 0x40 ... 0x5f
+                    // construct id array
+                    mstore(fptr, 0x60)
                     fptr := add(fptr, 0x20)
+                    // 0x60 ... 0x60 + 0x20 * idArrLen
+                    fptr := copyU256ArrToMem(fptr, idArrPtr)
 
-                    mstore(fptr, 0xa0)
-                    fptr := add(fptr, 0x20)
+                    // mstore(fptr, amount)
+                    // fptr := add(fptr, 0x20)
 
-                    fptr := copyCalldata2Mem(fptr, arrPtr)
+                    // mstore(fptr, 0xa0)
+                    // fptr := add(fptr, 0x20)
+
+                    // fptr := copyCalldata2Mem(fptr, arrPtr)
 
                     let response := call(gas(), to, 0, add(optr, 28), sub(fptr, optr), 0x00, 4)
                     require(response)
@@ -342,17 +362,21 @@ object "MyYulERC1155" {
                 let amountArrLen, firstAmountPtr := getU256ArrLenAndDptr(amountArrPtr)
                 require(eq(idArrLen, amountArrLen))
 
+                let id, amount
                 for {let i := 0} lt(i, idArrLen) {i := add(i, 1)} {
-                    
-                    let id := decodeAsUint(add(firstIdPtr, i))
-                    let amount := decodeAsUint(add(firstAmountPtr, i))
+                    id := calldataload(firstIdPtr)
+                    amount := calldataload(firstAmountPtr)
                     _safeTransferFrom(from, to, id, amount)
+
+                    firstIdPtr := add(firstIdPtr, 0x20)
+                    firstAmountPtr := add(firstAmountPtr, 0x20)
                 }
 
                 emitTransferBatch(caller(), from, to, idArrPtr, amountArrPtr)
 
                 doSafeBatchTransferAcceptanceCheck(caller(), from, to, idArrPtr, amountArrPtr, dataArrPtr)
 
+                // mstore(0x00, idArrLen)
                 return(0x00, 0x20)
             }
 
@@ -374,27 +398,23 @@ object "MyYulERC1155" {
                 if iszero(condition) { revert(0, 0) }
             }
             function getU256ArrLenAndDptr(arrPtr) -> arrLen, dataPtr {
-                // for example, if arrPtr's value is point to 0x40
-                // then the length of arrPtr1 will be stored in the 3rd slot of calldata
-                // at this moment, we need to pass 2 to decodeAsUint() function to get arrPtr's length
-
-                let dataLenPtr := div(arrPtr, 0x20)
-                arrLen := decodeAsUint(dataLenPtr)
-
-                dataPtr := add(dataLenPtr, 1)
+                arrLen := calldataload(arrPtr)
+                // actual data pointer
+                dataPtr := add(arrPtr, 0x20)
             }
-            function copyCalldata2Mem(fptr, calldataArrPtr) -> newFptr {
-                // dataPtr should be like 0x20, means its offset in calldata
-                // don't forget there are four bytes of function selector
-
-                let dataLenPtr := add(calldataArrPtr, 4)
-                let dataLen := calldataload(dataLenPtr)
-                let totalLen := add(dataLen, 0x20)               
+            /**
+             *  If original value in calldata is 0x20
+             *  then dataArrPtr passed in will be 0x24
+             */
+            function copyU256ArrToMem(fptr, u256ArrPtr) -> newFptr {
+                let arrLen := calldataload(u256ArrPtr)
+                let itemLen := mul(arrLen, 0x20)
+                let copyLen := add(0x20, itemLen)
 
                 // calldatacopy(t, f, s)
                 // copy s bytes from calldata at position f to mem at position t
-                calldatacopy(fptr, dataLenPtr, totalLen)
-                newFptr := add(fptr, totalLen)
+                calldatacopy(fptr, u256ArrPtr, copyLen)
+                newFptr := add(fptr, copyLen)
             }
 
 

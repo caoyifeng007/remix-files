@@ -7,6 +7,12 @@ pragma solidity ^0.8.0;
 contract ReceiverTest {
     bytes public receivedData;
 
+    uint256[] public receivedIds;
+
+    address public receivedOperator;
+
+    address public receivedFrom;
+
     function onERC1155Received(
         address operator,
         address from,
@@ -19,13 +25,27 @@ contract ReceiverTest {
         // return bytes4(data);
     }
 
+    // function onERC1155BatchReceived(
+    //     address operator,
+    //     address from,
+    //     uint256[] calldata ids,
+    //     uint256[] calldata values,
+    //     bytes calldata data
+    // ) external returns (bytes4) {
+    //     receivedIds = ids;
+    //     return this.onERC1155BatchReceived.selector;
+    // }
+
     function onERC1155BatchReceived(
         address operator,
         address from,
-        uint256[] calldata ids,
-        uint256[] calldata values,
-        bytes calldata data
-    ) external returns (bytes4) {}
+        uint256[] calldata ids
+    ) external returns (bytes4) {
+        receivedOperator = operator;
+        receivedFrom = from;
+        receivedIds = ids;
+        return this.onERC1155BatchReceived.selector;
+    }
 }
 
 interface MyYulERC1155 {
@@ -47,6 +67,8 @@ interface MyYulERC1155 {
     function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes memory data) external;
 
     function safeBatchTransferFrom(address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external;
+
+    // function safeBatchTransferFrom(address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external view returns(bytes32);
 
 }
 
@@ -93,6 +115,10 @@ contract CallMyYulERC1155 {
     function callSafeBatchTransferFrom(address _addr, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external {
         return MyYulERC1155(_addr).safeBatchTransferFrom(from, to, ids, amounts, data);
     }
+
+    // function callSafeBatchTransferFrom(address _addr, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external view returns(bytes32) {
+    //     return MyYulERC1155(_addr).safeBatchTransferFrom(from, to, ids, amounts, data);
+    // }
 
 
 

@@ -44,13 +44,15 @@ contract ReceiverTest {
         address operator,
         address from,
         uint256[] calldata ids,
-        uint256[] calldata values
+        uint256[] calldata values,
+        bytes calldata data
     ) external returns (bytes4) {
         receivedOperator = operator;
         receivedFrom = from;
         receivedIds = ids;
         receivedValues = values;
-        emit Log(this.onERC1155BatchReceived.selector);
+        receivedData = data;
+        // emit Log(this.onERC1155BatchReceived.selector);
 
         return this.onERC1155BatchReceived.selector;
     }

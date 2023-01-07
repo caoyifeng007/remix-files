@@ -286,10 +286,10 @@ object "MyYulERC1155" {
                     let optr := fptr
 
                     // keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)")
-                    // let signature := 0xbc197c81
+                    let signature := 0xbc197c81
 
                     // keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[])")
-                    let signature := 0x23e78a02
+                    // let signature := 0x23e78a02
 
                     // keccak256("onERC1155BatchReceived(address,address,uint256[])")
                     // let signature := 0x549a98fe
@@ -311,65 +311,52 @@ object "MyYulERC1155" {
                     fptr := add(fptr, 0x20)
 
                     
-                    let idArrTotalBytes, amountArrTotalBytes, dataArrLen, _
+                    let idArrTotalBytes, amountArrTotalBytes, dataArrTotalBytes
                     idArrTotalBytes := getU256ArrTotalBytesNum(idArrPtr)
                     amountArrTotalBytes := getU256ArrTotalBytesNum(amountArrPtr)
-                    // dataArrLen, _ := getArrLenAndFirstItemPtr(dataArrPtr)
+                    dataArrTotalBytes := getU8ArrTotalBytesNum(dataArrPtr)
 
 
 
 // 000000000000000000000000d8b934580fce35a11b58c6d73adee468a2833fa8  00
 // 000000000000000000000000d8b934580fce35a11b58c6d73adee468a2833fa8  20
+
 // 00000000000000000000000000000000000000000000000000000000000000a0  40
 // 0000000000000000000000000000000000000000000000000000000000000100  60
 // 0000000000000000000000000000000000000000000000000000000000000160  80
+
 // 0000000000000000000000000000000000000000000000000000000000000002  a0 <-
 // 0000000000000000000000000000000000000000000000000000000000000007  c0
 // 0000000000000000000000000000000000000000000000000000000000000008  e0
+
 // 0000000000000000000000000000000000000000000000000000000000000002  100 <-
 // 0000000000000000000000000000000000000000000000000000000000000005  120
 // 000000000000000000000000000000000000000000000000000000000000000a  140
+
 // 0000000000000000000000000000000000000000000000000000000000000002  160 <-
 // 1122000000000000000000000000000000000000000000000000000000000000  180
 
 
-// 000000000000000000000000d8b934580fce35a11b58c6d73adee468a2833fa8  00
-// 000000000000000000000000d8b934580fce35a11b58c6d73adee468a2833fa8  20
-// 0000000000000000000000000000000000000000000000000000000000000080  40
-// 00000000000000000000000000000000000000000000000000000000000000e0  60  e0 = 80 + 20 * (1 + arrLen)
-
-// 0000000000000000000000000000000000000000000000000000000000000002  80 <-
-// 0000000000000000000000000000000000000000000000000000000000000007  a0
-// 0000000000000000000000000000000000000000000000000000000000000008  c0
-// 0000000000000000000000000000000000000000000000000000000000000002  e0 <-
-// 0000000000000000000000000000000000000000000000000000000000000005  100
-// 000000000000000000000000000000000000000000000000000000000000000a  120
-
-
                     // 0x40 ... 0x5f
                     // construct ids array pointer
-                    mstore(fptr, 0x80)
-                    // mstore(fptr, sub(fptr, 0x80))
+                    mstore(fptr, 0xa0)
                     fptr := add(fptr, 0x20)
 
                     // 0x60 ... 0x7f
-                    // construct values array pointer
-                    // mstore(fptr, 0xe0)
-                    mstore(fptr, add(0x80, idArrTotalBytes))
+                    // construct amounts array pointer
+                    mstore(fptr, add(0xa0, idArrTotalBytes))
                     fptr := add(fptr, 0x20)
 
-                    fptr := copyU256ArrToMem(fptr, idArrPtr)
+                    // construct data array pointer
+                    mstore(fptr, add(0xa0, add(idArrTotalBytes, amountArrTotalBytes)))
+                    fptr := add(fptr, 0x20)
 
+
+                    fptr := copyU256ArrToMem(fptr, idArrPtr)
                     
                     fptr := copyU256ArrToMem(fptr, amountArrPtr)
 
-                    // mstore(0x00, mload(sub(fptr, 0x20)))
-                    // return(0x00, 0x20)
-
-                    // mstore(fptr, 0xa0)
-                    // fptr := add(fptr, 0x20)
-
-                    // fptr := copyCalldata2Mem(fptr, arrPtr)
+                    fptr := copyU8ArrToMem(fptr, dataArrPtr)
 
                     let response := call(gas(), to, 0, add(optr, 28), sub(fptr, optr), 0x00, 4)
                     require(response)
@@ -467,17 +454,43 @@ object "MyYulERC1155" {
 
                 totalBytesNum := add(0x20, bytesNum)
             }
+            function getU8ArrTotalBytesNum(u8ArrPtr) -> totalBytesNum {
+                let itemNum := getArrItemNum(u8ArrPtr)
+
+                totalBytesNum := add(0x20, itemNum)
+
+                // let result := div(itemNum, 0x20)
+                // let remainder := mod(itemNum, 0x20)
+                
+                // if iszero(remainder) {    
+                //     totalBytesNum := result
+                //     leave
+                // }
+
+                // if remainder {    
+                //     totalBytesNum := add(result, 1)
+                //     leave
+                // }
+            }
+            function copyToMem(mptr, calldataPtr, bytesNum) -> nMptr {
+                // calldatacopy(t, f, s)
+                // copy s bytes from calldata at position f to mem at position t
+                calldatacopy(mptr, calldataPtr, bytesNum)
+                nMptr := add(mptr, bytesNum)
+            }
             /**
              *  If original value in calldata is 0x20
              *  then dataArrPtr passed in will be 0x24
              */
-            function copyU256ArrToMem(fptr, u256ArrPtr) -> newFptr {              
+            function copyU256ArrToMem(mptr, u256ArrPtr) -> newFptr {              
                 let totalBytesNum := getU256ArrTotalBytesNum(u256ArrPtr)
 
-                // calldatacopy(t, f, s)
-                // copy s bytes from calldata at position f to mem at position t
-                calldatacopy(fptr, u256ArrPtr, totalBytesNum)
-                newFptr := add(fptr, totalBytesNum)
+                newFptr := copyToMem(mptr, u256ArrPtr, totalBytesNum)
+            }
+            function copyU8ArrToMem(mptr, u8ArrPtr) -> newFptr {              
+                let totalBytesNum := getU8ArrTotalBytesNum(u8ArrPtr)
+
+                newFptr := copyToMem(mptr, u8ArrPtr, totalBytesNum)
             }
 
 

@@ -58,7 +58,7 @@ object "MyYulERC1155" {
                 returnUint(balanceOf(decodeAsAddress(0), decodeAsUint(1)))
             }
             case 0x4e1273f4 /* "balanceOfBatch(address[],uint256[])" */ {
-                balanceOfBatch(decodeAsUint(0), decodeAsUint(1))
+                balanceOfBatch(add(decodeAsUint(0), 4), add(decodeAsUint(1), 4))
             }
             case 0xa22cb465 /* "setApprovalForAll(address,bool)" */ {
                 setApprovalForAll(decodeAsAddress(0), decodeAsUint(1))
@@ -217,7 +217,7 @@ object "MyYulERC1155" {
             }
             function balanceOfBatch(accArrPtr, idArrPtr)  {
 
-                let accArrLen, firstAddrPtr := getArrLenAndFirstItemPtr(accArrPtr)
+                let accArrLen, firstAccrPtr := getArrLenAndFirstItemPtr(accArrPtr)
                 let idArrLen, firstIdPtr := getArrLenAndFirstItemPtr(idArrPtr)
 
                 require(eq(accArrLen, idArrLen))
@@ -229,19 +229,23 @@ object "MyYulERC1155" {
                 // step1 store ptr of actual data
                 mstore(fptr, 0x20)
                 fptr := add(fptr, 0x20)
+
                 // step2 store array length
                 mstore(fptr, accArrLen)
                 fptr := add(fptr, 0x20)
-                // step3 store actual data
-                
+
+                // step3 store actual data               
                 for {let i := 0} lt(i, accArrLen) {i := add(i, 1)} {
-                    let addr := decodeAsAddress(add(firstAddrPtr, i))
-                    let id := decodeAsUint(add(firstIdPtr, i))
+                    let addr := calldataload(firstAccrPtr)
+                    let id := calldataload(firstIdPtr)
 
                     let b := balanceOf(addr, id)
 
                     mstore(fptr, b)
                     fptr := add(fptr, 0x20)
+
+                    firstAccrPtr := add(firstAccrPtr, 0x20)
+                    firstIdPtr := add(firstIdPtr, 0x20)
                 }
 
                 return(optr, sub(fptr, optr))

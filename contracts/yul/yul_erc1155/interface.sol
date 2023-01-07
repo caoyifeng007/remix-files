@@ -74,6 +74,8 @@ interface MyYulERC1155 {
 
     function burn(address from, uint256 id,uint256 amount) external;
 
+    function burnBatch(address from, uint256[] memory ids, uint256[] memory amounts) external;
+
 }
 
 contract CallMyYulERC1155 {
@@ -136,7 +138,10 @@ contract CallMyYulERC1155 {
         return MyYulERC1155(_addr).burn(from, id, amount);
     }
 
+    function callBurnBatch(address _addr, address from, uint256[] memory ids, uint256[] memory amounts) external {
+        return MyYulERC1155(_addr).burnBatch(from, ids, amounts);
+    }
 
 
+    
 }
-

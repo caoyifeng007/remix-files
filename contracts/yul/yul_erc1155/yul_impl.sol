@@ -84,7 +84,9 @@ object "MyYulERC1155" {
             case 0xf5298aca /* "burn(address,uint256,uint256)" */ {
                 burn(decodeAsAddress(0), decodeAsAddress(1), decodeAsUint(2))
             }
-
+            case 0x6b20c454 /* "burnBatch(address,uint256[],uint256[])" */ {
+                burnBatch(decodeAsAddress(0), add(decodeAsUint(1), 4), add(decodeAsUint(2), 4))
+            }
             default /* don't allow fallback or receive */ {
                 revert(0, 0)
             }
@@ -523,6 +525,35 @@ object "MyYulERC1155" {
                 emitTransferSingle(caller(), from, 0, id, amount)
 
                 doSafeTransferAcceptanceCheck(caller(), from, 0, id, amount, 0)
+
+                return(0x00, 0x20)
+            }
+
+            function burnBatch(from, idArrPtr, amountArrPtr) {
+                // onlyOwner()
+                revertIfZeroAddress(from)
+
+                let idArrLen, firstIdPtr := getArrLenAndFirstItemPtr(idArrPtr)
+                let amountArrLen, firstAmountPtr := getArrLenAndFirstItemPtr(amountArrPtr)
+                require(eq(idArrLen, amountArrLen))
+
+                let id, amount
+                for {let i := 0} lt(i, idArrLen) {i := add(i, 1)} {
+                    id := calldataload(firstIdPtr)
+                    amount := calldataload(firstAmountPtr)
+
+                    let oBalance := balanceOf(from, id)
+                    require(gte(oBalance, amount))
+                    
+                    sstore(balancesPos(id, from), sub(oBalance, amount))
+
+                    firstIdPtr := add(firstIdPtr, 0x20)
+                    firstAmountPtr := add(firstAmountPtr, 0x20)
+                }
+
+                emitTransferBatch(caller(), from, 0, idArrPtr, amountArrPtr)
+
+                return(0x00, 0x20)
             }
 
             /* ---------- utility functions ---------- */

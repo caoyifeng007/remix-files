@@ -27,17 +27,6 @@ contract ReceiverTest {
         // return bytes4(data);
     }
 
-    // function onERC1155BatchReceived(
-    //     address operator,
-    //     address from,
-    //     uint256[] calldata ids,
-    //     uint256[] calldata values,
-    //     bytes calldata data
-    // ) external returns (bytes4) {
-    //     receivedIds = ids;
-    //     return this.onERC1155BatchReceived.selector;
-    // }
-
     event Log(bytes4 indexed selector);
 
     function onERC1155BatchReceived(
@@ -52,7 +41,6 @@ contract ReceiverTest {
         receivedIds = ids;
         receivedValues = values;
         receivedData = data;
-        // emit Log(this.onERC1155BatchReceived.selector);
 
         return this.onERC1155BatchReceived.selector;
     }

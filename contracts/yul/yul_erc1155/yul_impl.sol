@@ -71,7 +71,6 @@ object "MyYulERC1155" {
             }
             case 0x2eb2c2d6 /* "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)" */ {
                 safeBatchTransferFrom(decodeAsAddress(0), decodeAsAddress(1), add(decodeAsUint(2), 4), add(decodeAsUint(3), 4), add(decodeAsUint(4), 4))
-                // safeBatchTransferFrom(decodeAsAddress(0), decodeAsAddress(1), decodeAsUint(2), decodeAsUint(3), decodeAsUint(4))
             }
             default {
                 revert(0, 0)
@@ -287,15 +286,6 @@ object "MyYulERC1155" {
 
                     // keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)")
                     let signature := 0xbc197c81
-
-                    // keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[])")
-                    // let signature := 0x23e78a02
-
-                    // keccak256("onERC1155BatchReceived(address,address,uint256[])")
-                    // let signature := 0x549a98fe
-
-                    // keccak256("onERC1155BatchReceived(address,address)")
-                    // let signature := 0x30af2667
                     
                     mstore(fptr, signature)
                     fptr := add(fptr, 0x20)
@@ -316,33 +306,10 @@ object "MyYulERC1155" {
                     amountArrTotalBytes := getU256ArrTotalBytesNum(amountArrPtr)
                     dataArrTotalBytes := getU8ArrTotalBytesNum(dataArrPtr)
 
-
-
-// 000000000000000000000000d8b934580fce35a11b58c6d73adee468a2833fa8  00
-// 000000000000000000000000d8b934580fce35a11b58c6d73adee468a2833fa8  20
-
-// 00000000000000000000000000000000000000000000000000000000000000a0  40
-// 0000000000000000000000000000000000000000000000000000000000000100  60
-// 0000000000000000000000000000000000000000000000000000000000000160  80
-
-// 0000000000000000000000000000000000000000000000000000000000000002  a0 <-
-// 0000000000000000000000000000000000000000000000000000000000000007  c0
-// 0000000000000000000000000000000000000000000000000000000000000008  e0
-
-// 0000000000000000000000000000000000000000000000000000000000000002  100 <-
-// 0000000000000000000000000000000000000000000000000000000000000005  120
-// 000000000000000000000000000000000000000000000000000000000000000a  140
-
-// 0000000000000000000000000000000000000000000000000000000000000002  160 <-
-// 1122000000000000000000000000000000000000000000000000000000000000  180
-
-
-                    // 0x40 ... 0x5f
                     // construct ids array pointer
                     mstore(fptr, 0xa0)
                     fptr := add(fptr, 0x20)
 
-                    // 0x60 ... 0x7f
                     // construct amounts array pointer
                     mstore(fptr, add(0xa0, idArrTotalBytes))
                     fptr := add(fptr, 0x20)
@@ -410,7 +377,6 @@ object "MyYulERC1155" {
 
                 doSafeBatchTransferAcceptanceCheck(caller(), from, to, idArrPtr, amountArrPtr, dataArrPtr)
 
-                // mstore(0x00, idArrLen)
                 return(0x00, 0x20)
             }
 
@@ -458,19 +424,6 @@ object "MyYulERC1155" {
                 let itemNum := getArrItemNum(u8ArrPtr)
 
                 totalBytesNum := add(0x20, itemNum)
-
-                // let result := div(itemNum, 0x20)
-                // let remainder := mod(itemNum, 0x20)
-                
-                // if iszero(remainder) {    
-                //     totalBytesNum := result
-                //     leave
-                // }
-
-                // if remainder {    
-                //     totalBytesNum := add(result, 1)
-                //     leave
-                // }
             }
             function copyToMem(mptr, calldataPtr, bytesNum) -> nMptr {
                 // calldatacopy(t, f, s)
@@ -492,10 +445,6 @@ object "MyYulERC1155" {
 
                 newFptr := copyToMem(mptr, u8ArrPtr, totalBytesNum)
             }
-
-
-            // mstore(0x00, 0x123)
-            // return(0, 0x40)
 
         }
 

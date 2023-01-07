@@ -78,6 +78,11 @@ object "MyYulERC1155" {
             case 0x731133e9 /* "mint(address,uint256,uint256,bytes)" */ {
                 mint(decodeAsAddress(0), decodeAsAddress(1), decodeAsUint(2), add(decodeAsUint(3), 4))
             }
+            case 0x1f7fdffa /* "mintBatch(address,uint256[],uint256[],bytes)" */ {
+                mintBatch(decodeAsAddress(0), add(decodeAsUint(1), 4), add(decodeAsUint(2), 4), add(decodeAsUint(3), 4))
+            }
+            
+
             default /* don't allow fallback or receive */ {
                 revert(0, 0)
             }
@@ -437,6 +442,7 @@ object "MyYulERC1155" {
                 for {let i := 0} lt(i, idArrLen) {i := add(i, 1)} {
                     id := calldataload(firstIdPtr)
                     amount := calldataload(firstAmountPtr)
+
                     _safeTransferFrom(from, to, id, amount)
 
                     firstIdPtr := add(firstIdPtr, 0x20)
@@ -449,15 +455,7 @@ object "MyYulERC1155" {
 
                 return(0x00, 0x20)
             }
-// 0x731133e9
-// 0000000000000000000000008207d032322052afb9bf1463af87fd0c0097edde
-// 0000000000000000000000000000000000000000000000000000000000000005
-// 000000000000000000000000000000000000000000000000000000000000000a
-// 0000000000000000000000000000000000000000000000000000000000000080
-// 0000000000000000000000000000000000000000000000000000000000000001
-// 1200000000000000000000000000000000000000000000000000000000000000
 
-// 731133e90000000000000000000000008207d032322052afb9bf1463af87fd0c0097edde0000000000000000000000000000000000000000000000000000000000000005000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000011200000000000000000000000000000000000000000000000000000000000000
             function mint(to, id, amount, dataArrPtr) {
                 onlyOwner()
                 revertIfZeroAddress(to)
@@ -468,6 +466,33 @@ object "MyYulERC1155" {
                 emitTransferSingle(caller(), 0, to, id, amount)
 
                 doSafeTransferAcceptanceCheck(caller(), 0, to, id, amount, dataArrPtr)
+
+                return(0x00, 0x20)
+            }
+
+            function mintBatch(to, idArrPtr, amountArrPtr, dataArrPtr) {
+                onlyOwner()
+                revertIfZeroAddress(to)
+
+                let idArrLen, firstIdPtr := getArrLenAndFirstItemPtr(idArrPtr)
+                let amountArrLen, firstAmountPtr := getArrLenAndFirstItemPtr(amountArrPtr)
+                require(eq(idArrLen, amountArrLen))
+
+                let id, amount
+                for {let i := 0} lt(i, idArrLen) {i := add(i, 1)} {
+                    id := calldataload(firstIdPtr)
+                    amount := calldataload(firstAmountPtr)
+                    let oBalance := balanceOf(to, id)
+                    
+                    sstore(balancesPos(id, to), add(oBalance, amount))
+
+                    firstIdPtr := add(firstIdPtr, 0x20)
+                    firstAmountPtr := add(firstAmountPtr, 0x20)
+                }
+
+                emitTransferBatch(caller(), 0, to, idArrPtr, amountArrPtr)
+
+                doSafeBatchTransferAcceptanceCheck(caller(), 0, to, idArrPtr, amountArrPtr, dataArrPtr)
 
                 return(0x00, 0x20)
             }

@@ -70,6 +70,8 @@ interface MyYulERC1155 {
 
     function mint(address to, uint256 id, uint256 amount, bytes memory data) external;
 
+    function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external;
+
 }
 
 contract CallMyYulERC1155 {
@@ -124,6 +126,9 @@ contract CallMyYulERC1155 {
         return MyYulERC1155(_addr).mint(to, id, amount, data);
     }
 
+    function callMintBatch(address _addr, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external {
+        return MyYulERC1155(_addr).mintBatch(to, ids, amounts, data);
+    }
 
 
 

@@ -54,6 +54,8 @@ interface MyYulERC1155 {
 
     function uri(uint256 id) external view returns(string memory);
 
+    function setURI(string memory newuri) external;
+
     function balanceOf(address account, uint256 id) external view returns(uint256);
 
     function balanceOfBatch(address[] memory accounts,uint256[] memory ids) external view returns(uint256[] memory);
@@ -65,8 +67,6 @@ interface MyYulERC1155 {
     function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes memory data) external;
 
     function safeBatchTransferFrom(address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external;
-
-    // function safeBatchTransferFrom(address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external view returns(bytes32);
 
 }
 
@@ -88,6 +88,10 @@ contract CallMyYulERC1155 {
 
     function callUri(address _addr, uint256 id) external view returns(string memory) {
         return MyYulERC1155(_addr).uri(id);
+    }
+
+    function callSetURI(address _addr, string memory newuri) external {
+        return MyYulERC1155(_addr).setURI(newuri);
     }
     
     function callBalanceOf(address _addr, address account, uint256 id) external view returns(uint256) {
@@ -114,10 +118,8 @@ contract CallMyYulERC1155 {
         return MyYulERC1155(_addr).safeBatchTransferFrom(from, to, ids, amounts, data);
     }
 
-    // function callSafeBatchTransferFrom(address _addr, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external view returns(bytes32) {
-    //     return MyYulERC1155(_addr).safeBatchTransferFrom(from, to, ids, amounts, data);
-    // }
 
 
 
 }
+

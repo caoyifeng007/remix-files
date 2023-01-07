@@ -54,6 +54,9 @@ object "MyYulERC1155" {
             case 0x0e89341c /* "uri(uint256)" */ {
                 uri(decodeAsUint(0))
             }
+            case 0x02fe5305 /* "setURI(string)" */ {
+                setURI(add(decodeAsUint(0), 4))
+            }
             case 0x00fdd58e /* "balanceOf(address,uint256)" */ {
                 returnUint(balanceOf(decodeAsAddress(0), decodeAsUint(1)))
             }
@@ -72,7 +75,7 @@ object "MyYulERC1155" {
             case 0x2eb2c2d6 /* "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)" */ {
                 safeBatchTransferFrom(decodeAsAddress(0), decodeAsAddress(1), add(decodeAsUint(2), 4), add(decodeAsUint(3), 4), add(decodeAsUint(4), 4))
             }
-            default {
+            default /* don't allow fallback or receive */ {
                 revert(0, 0)
             }
 
@@ -209,6 +212,38 @@ object "MyYulERC1155" {
                 }
                 
                 return(optr, add(mul(loops, 0x20), 0x40))
+            }
+            function setURI(strPtr) {
+                let strLen, firstStr := getArrLenAndFirstItemPtr(strPtr)
+                // Store the (length * 2 + 1) in slot 1.
+                sstore(uriLengthPos(), add(mul(strLen, 2), 1))
+
+                let result := div(strLen, 0x20)
+                let remainder := mod(strLen, 0x20)
+                let loops := 0
+                
+                if iszero(remainder) {
+                    loops := result
+                }
+                if remainder {
+                    loops := add(result, 1)
+                }
+
+                // Store the actual string bytes in slot keccak256(1)
+                for {let i := 0} lt(i, loops) {i := add(i, 1)} {
+                    let slot := calldataload(firstStr)
+                    
+                    sstore(add(uriPos(), i), slot)
+
+                    firstStr := add(firstStr, 0x20)
+                }
+// 0x2d63d1f0
+// 0000000000000000000000001c91347f2a44538ce62453bebd9aa907c662b4bd
+// 0000000000000000000000000000000000000000000000000000000000000040
+// 0000000000000000000000000000000000000000000000000000000000000002
+// 7362000000000000000000000000000000000000000000000000000000000000
+
+                return(0x00, 0x20)
             }
             function balanceOf(account, id) -> b {
                 revertIfZeroAddress(account)

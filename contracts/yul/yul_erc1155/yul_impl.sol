@@ -81,7 +81,9 @@ object "MyYulERC1155" {
             case 0x1f7fdffa /* "mintBatch(address,uint256[],uint256[],bytes)" */ {
                 mintBatch(decodeAsAddress(0), add(decodeAsUint(1), 4), add(decodeAsUint(2), 4), add(decodeAsUint(3), 4))
             }
-            
+            case 0xf5298aca /* "burn(address,uint256,uint256)" */ {
+                burn(decodeAsAddress(0), decodeAsAddress(1), decodeAsUint(2))
+            }
 
             default /* don't allow fallback or receive */ {
                 revert(0, 0)
@@ -335,14 +337,26 @@ object "MyYulERC1155" {
                     mstore(fptr, amount)
                     fptr := add(fptr, 0x20)
 
-                    let dataArrTotalBytes := getU8ArrTotalBytesNum(dataArrPtr)
+                    let dataArrTotalBytes
+                    if gt(dataArrPtr, 0) {
+                        dataArrTotalBytes := getU8ArrTotalBytesNum(dataArrPtr)
 
-                    // 0x80 ... 0x9f
-                    // construct data array pointer
-                    mstore(fptr, 0xa0)
-                    fptr := add(fptr, 0x20)
+                        // 0x80 ... 0x9f
+                        // construct data array pointer
+                        mstore(fptr, 0xa0)
+                        fptr := add(fptr, 0x20)
 
-                    fptr := copyU8ArrToMem(fptr, dataArrPtr)
+                        fptr := copyU8ArrToMem(fptr, dataArrPtr)
+                    }
+                    if eq(dataArrPtr, 0) {
+                        mstore(fptr, 0xa0)
+                        fptr := add(fptr, 0x20)
+
+                        // zero length
+                        mstore(fptr, 0)
+                        fptr := add(fptr, 0x20)
+                    }
+                    
 
                     let response := call(gas(), to, 0, add(optr, 28), sub(fptr, optr), 0x00, 4)
                     require(response)
@@ -457,7 +471,7 @@ object "MyYulERC1155" {
             }
 
             function mint(to, id, amount, dataArrPtr) {
-                onlyOwner()
+                // onlyOwner()
                 revertIfZeroAddress(to)
                 
                 let oBalance := balanceOf(to, id)
@@ -471,7 +485,7 @@ object "MyYulERC1155" {
             }
 
             function mintBatch(to, idArrPtr, amountArrPtr, dataArrPtr) {
-                onlyOwner()
+                // onlyOwner()
                 revertIfZeroAddress(to)
 
                 let idArrLen, firstIdPtr := getArrLenAndFirstItemPtr(idArrPtr)
@@ -495,6 +509,20 @@ object "MyYulERC1155" {
                 doSafeBatchTransferAcceptanceCheck(caller(), 0, to, idArrPtr, amountArrPtr, dataArrPtr)
 
                 return(0x00, 0x20)
+            }
+
+            function burn(from, id, amount) {
+                // onlyOwner()
+                revertIfZeroAddress(from)
+
+                let oBalance := balanceOf(from, id)
+                require(gte(oBalance, amount))
+
+                sstore(balancesPos(id, from), sub(oBalance, amount))
+
+                emitTransferSingle(caller(), from, 0, id, amount)
+
+                doSafeTransferAcceptanceCheck(caller(), from, 0, id, amount, 0)
             }
 
             /* ---------- utility functions ---------- */

@@ -72,6 +72,8 @@ interface MyYulERC1155 {
 
     function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external;
 
+    function burn(address from, uint256 id,uint256 amount) external;
+
 }
 
 contract CallMyYulERC1155 {
@@ -128,6 +130,10 @@ contract CallMyYulERC1155 {
 
     function callMintBatch(address _addr, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external {
         return MyYulERC1155(_addr).mintBatch(to, ids, amounts, data);
+    }
+
+    function callBurn(address _addr, address from, uint256 id,uint256 amount) external {
+        return MyYulERC1155(_addr).burn(from, id, amount);
     }
 
 

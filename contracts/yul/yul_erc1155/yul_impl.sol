@@ -67,7 +67,7 @@ object "MyYulERC1155" {
                 returnUint(isApprovedForAll(decodeAsAddress(0), decodeAsAddress(1)))
             }
             case 0xf242432a /* "safeTransferFrom(address,address,uint256,uint256,bytes)" */ {
-                safeTransferFrom(decodeAsAddress(0), decodeAsAddress(1), decodeAsUint(2), decodeAsUint(3), decodeAsUint(4))
+                safeTransferFrom(decodeAsAddress(0), decodeAsAddress(1), decodeAsUint(2), decodeAsUint(3), add(decodeAsUint(4), 4))
             }
             case 0x2eb2c2d6 /* "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)" */ {
                 safeBatchTransferFrom(decodeAsAddress(0), decodeAsAddress(1), add(decodeAsUint(2), 4), add(decodeAsUint(3), 4), add(decodeAsUint(4), 4))
@@ -129,9 +129,35 @@ object "MyYulERC1155" {
                 let signature := 0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb
                 
                 let fptr := 0x80
-                // todo
-                // fptr := copyCalldata2Mem(fptr, idArrPtr)
-                // fptr := copyCalldata2Mem(fptr, amountArrPtr)
+
+                let idArrTotalBytes, amountArrTotalBytes
+                idArrTotalBytes := getU256ArrTotalBytesNum(idArrPtr)
+                amountArrTotalBytes := getU256ArrTotalBytesNum(amountArrPtr)
+
+
+// 0000000000000000000000000000000000000000000000000000000000000040  00 
+// 00000000000000000000000000000000000000000000000000000000000000a0  20  e0 = 80 + 20 * (1 + arrLen) 
+ 
+// 0000000000000000000000000000000000000000000000000000000000000002  40 <- 
+// 0000000000000000000000000000000000000000000000000000000000000007  60 
+// 0000000000000000000000000000000000000000000000000000000000000008  80 
+// 0000000000000000000000000000000000000000000000000000000000000002  a0 <- 
+// 0000000000000000000000000000000000000000000000000000000000000005  c0 
+// 000000000000000000000000000000000000000000000000000000000000000a  e0 
+
+                // construct ids array pointer
+                mstore(fptr, 0x40)
+                fptr := add(fptr, 0x20)
+
+                // construct amounts array pointer
+                mstore(fptr, add(0x40, idArrTotalBytes))
+                fptr := add(fptr, 0x20)
+
+
+                fptr := copyU256ArrToMem(fptr, idArrPtr)
+                
+                fptr := copyU256ArrToMem(fptr, amountArrPtr)
+
                 log4(0x80, sub(fptr, 0x80), signature, caller(), from, to)
             }
 

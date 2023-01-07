@@ -75,6 +75,9 @@ object "MyYulERC1155" {
             case 0x2eb2c2d6 /* "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)" */ {
                 safeBatchTransferFrom(decodeAsAddress(0), decodeAsAddress(1), add(decodeAsUint(2), 4), add(decodeAsUint(3), 4), add(decodeAsUint(4), 4))
             }
+            case 0x731133e9 /* "mint(address,uint256,uint256,bytes)" */ {
+                mint(decodeAsAddress(0), decodeAsAddress(1), decodeAsUint(2), add(decodeAsUint(3), 4))
+            }
             default /* don't allow fallback or receive */ {
                 revert(0, 0)
             }
@@ -186,6 +189,9 @@ object "MyYulERC1155" {
             function owner() -> o {
                 o := sload(ownerPos())
             }
+            function onlyOwner() {
+                require(eq(caller(), owner()))
+            }
             function uri(id) {
                 let fptr := 0x80
                 let optr := fptr
@@ -213,14 +219,10 @@ object "MyYulERC1155" {
                 
                 return(optr, add(mul(loops, 0x20), 0x40))
             }
-// 0x02fe5305
-// 0000000000000000000000000000000000000000000000000000000000000020 00
-// 0000000000000000000000000000000000000000000000000000000000000005 20
-// 6162633132000000000000000000000000000000000000000000000000000000 40
-// 02fe5305000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000056161616263313200000000000000000000000000000000000000000000000000
+            
             function setURI(strPtr) {
                 // only owner can change URI
-                require(eq(caller(), owner()))
+                onlyOwner()
 
                 let strLen, firstStr := getArrLenAndFirstItemPtr(strPtr)
                 // Store the (length * 2 + 1) in slot 1.
@@ -444,6 +446,28 @@ object "MyYulERC1155" {
                 emitTransferBatch(caller(), from, to, idArrPtr, amountArrPtr)
 
                 doSafeBatchTransferAcceptanceCheck(caller(), from, to, idArrPtr, amountArrPtr, dataArrPtr)
+
+                return(0x00, 0x20)
+            }
+// 0x731133e9
+// 0000000000000000000000008207d032322052afb9bf1463af87fd0c0097edde
+// 0000000000000000000000000000000000000000000000000000000000000005
+// 000000000000000000000000000000000000000000000000000000000000000a
+// 0000000000000000000000000000000000000000000000000000000000000080
+// 0000000000000000000000000000000000000000000000000000000000000001
+// 1200000000000000000000000000000000000000000000000000000000000000
+
+// 731133e90000000000000000000000008207d032322052afb9bf1463af87fd0c0097edde0000000000000000000000000000000000000000000000000000000000000005000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000011200000000000000000000000000000000000000000000000000000000000000
+            function mint(to, id, amount, dataArrPtr) {
+                onlyOwner()
+                revertIfZeroAddress(to)
+                
+                let oBalance := balanceOf(to, id)
+                sstore(balancesPos(id, to), add(oBalance, amount))
+
+                emitTransferSingle(caller(), 0, to, id, amount)
+
+                doSafeTransferAcceptanceCheck(caller(), 0, to, id, amount, dataArrPtr)
 
                 return(0x00, 0x20)
             }

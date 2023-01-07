@@ -68,6 +68,8 @@ interface MyYulERC1155 {
 
     function safeBatchTransferFrom(address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external;
 
+    function mint(address to, uint256 id, uint256 amount, bytes memory data) external;
+
 }
 
 contract CallMyYulERC1155 {
@@ -116,6 +118,10 @@ contract CallMyYulERC1155 {
 
     function callSafeBatchTransferFrom(address _addr, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external {
         return MyYulERC1155(_addr).safeBatchTransferFrom(from, to, ids, amounts, data);
+    }
+
+    function callMint(address _addr, address to, uint256 id, uint256 amount, bytes memory data) external {
+        return MyYulERC1155(_addr).mint(to, id, amount, data);
     }
 
 

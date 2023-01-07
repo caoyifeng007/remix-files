@@ -13,6 +13,8 @@ contract ReceiverTest {
 
     address public receivedFrom;
 
+    uint256[] public receivedValues;
+
     function onERC1155Received(
         address operator,
         address from,
@@ -36,14 +38,20 @@ contract ReceiverTest {
     //     return this.onERC1155BatchReceived.selector;
     // }
 
+    event Log(bytes4 indexed selector);
+
     function onERC1155BatchReceived(
         address operator,
         address from,
-        uint256[] calldata ids
+        uint256[] calldata ids,
+        uint256[] calldata values
     ) external returns (bytes4) {
         receivedOperator = operator;
         receivedFrom = from;
         receivedIds = ids;
+        receivedValues = values;
+        emit Log(this.onERC1155BatchReceived.selector);
+
         return this.onERC1155BatchReceived.selector;
     }
 }

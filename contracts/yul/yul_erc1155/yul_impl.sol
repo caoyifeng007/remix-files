@@ -203,8 +203,8 @@ object "MyYulERC1155" {
             }
             function balanceOfBatch(accArrPtr, idArrPtr)  {
 
-                let accArrLen, firstAddrPtr := getU256ArrLenAndDptr(accArrPtr)
-                let idArrLen, firstIdPtr := getU256ArrLenAndDptr(idArrPtr)
+                let accArrLen, firstAddrPtr := getArrLenAndFirstItemPtr(accArrPtr)
+                let idArrLen, firstIdPtr := getArrLenAndFirstItemPtr(idArrPtr)
 
                 require(eq(accArrLen, idArrLen))
 
@@ -288,8 +288,15 @@ object "MyYulERC1155" {
                     // keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)")
                     // let signature := 0xbc197c81
 
+                    // keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[])")
+                    let signature := 0x23e78a02
+
                     // keccak256("onERC1155BatchReceived(address,address,uint256[])")
-                    let signature := 0x549a98fe
+                    // let signature := 0x549a98fe
+
+                    // keccak256("onERC1155BatchReceived(address,address)")
+                    // let signature := 0x30af2667
+                    
                     mstore(fptr, signature)
                     fptr := add(fptr, 0x20)
 
@@ -304,20 +311,60 @@ object "MyYulERC1155" {
                     fptr := add(fptr, 0x20)
 
                     
-                    let idArrLen, amountArrLen, dataArrLen, _
-                    idArrLen, _ := getU256ArrLenAndDptr(idArrPtr)
-                    // amountArrLen, _ := getU256ArrLenAndDptr(amountArrPtr)
-                    // dataArrLen, _ := getU256ArrLenAndDptr(dataArrPtr)
+                    let idArrTotalBytes, amountArrTotalBytes, dataArrLen, _
+                    idArrTotalBytes := getU256ArrTotalBytesNum(idArrPtr)
+                    amountArrTotalBytes := getU256ArrTotalBytesNum(amountArrPtr)
+                    // dataArrLen, _ := getArrLenAndFirstItemPtr(dataArrPtr)
+
+
+
+// 000000000000000000000000d8b934580fce35a11b58c6d73adee468a2833fa8  00
+// 000000000000000000000000d8b934580fce35a11b58c6d73adee468a2833fa8  20
+// 00000000000000000000000000000000000000000000000000000000000000a0  40
+// 0000000000000000000000000000000000000000000000000000000000000100  60
+// 0000000000000000000000000000000000000000000000000000000000000160  80
+// 0000000000000000000000000000000000000000000000000000000000000002  a0 <-
+// 0000000000000000000000000000000000000000000000000000000000000007  c0
+// 0000000000000000000000000000000000000000000000000000000000000008  e0
+// 0000000000000000000000000000000000000000000000000000000000000002  100 <-
+// 0000000000000000000000000000000000000000000000000000000000000005  120
+// 000000000000000000000000000000000000000000000000000000000000000a  140
+// 0000000000000000000000000000000000000000000000000000000000000002  160 <-
+// 1122000000000000000000000000000000000000000000000000000000000000  180
+
+
+// 000000000000000000000000d8b934580fce35a11b58c6d73adee468a2833fa8  00
+// 000000000000000000000000d8b934580fce35a11b58c6d73adee468a2833fa8  20
+// 0000000000000000000000000000000000000000000000000000000000000080  40
+// 00000000000000000000000000000000000000000000000000000000000000e0  60  e0 = 80 + 20 * (1 + arrLen)
+
+// 0000000000000000000000000000000000000000000000000000000000000002  80 <-
+// 0000000000000000000000000000000000000000000000000000000000000007  a0
+// 0000000000000000000000000000000000000000000000000000000000000008  c0
+// 0000000000000000000000000000000000000000000000000000000000000002  e0 <-
+// 0000000000000000000000000000000000000000000000000000000000000005  100
+// 000000000000000000000000000000000000000000000000000000000000000a  120
+
 
                     // 0x40 ... 0x5f
-                    // construct id array
-                    mstore(fptr, 0x60)
+                    // construct ids array pointer
+                    mstore(fptr, 0x80)
+                    // mstore(fptr, sub(fptr, 0x80))
                     fptr := add(fptr, 0x20)
-                    // 0x60 ... 0x60 + 0x20 * idArrLen
+
+                    // 0x60 ... 0x7f
+                    // construct values array pointer
+                    // mstore(fptr, 0xe0)
+                    mstore(fptr, add(0x80, idArrTotalBytes))
+                    fptr := add(fptr, 0x20)
+
                     fptr := copyU256ArrToMem(fptr, idArrPtr)
 
-                    // mstore(fptr, amount)
-                    // fptr := add(fptr, 0x20)
+                    
+                    fptr := copyU256ArrToMem(fptr, amountArrPtr)
+
+                    // mstore(0x00, mload(sub(fptr, 0x20)))
+                    // return(0x00, 0x20)
 
                     // mstore(fptr, 0xa0)
                     // fptr := add(fptr, 0x20)
@@ -358,8 +405,8 @@ object "MyYulERC1155" {
                 require(or(eq(from, caller()), isApprovedForAll(from, caller())))
                 revertIfZeroAddress(to)
 
-                let idArrLen, firstIdPtr := getU256ArrLenAndDptr(idArrPtr)
-                let amountArrLen, firstAmountPtr := getU256ArrLenAndDptr(amountArrPtr)
+                let idArrLen, firstIdPtr := getArrLenAndFirstItemPtr(idArrPtr)
+                let amountArrLen, firstAmountPtr := getArrLenAndFirstItemPtr(amountArrPtr)
                 require(eq(idArrLen, amountArrLen))
 
                 let id, amount
@@ -397,24 +444,40 @@ object "MyYulERC1155" {
             function require(condition) {
                 if iszero(condition) { revert(0, 0) }
             }
-            function getU256ArrLenAndDptr(arrPtr) -> arrLen, dataPtr {
-                arrLen := calldataload(arrPtr)
+            /**
+             *  Return item number in array
+             */
+            function getArrItemNum(arrPtr) -> itemNum {
+                itemNum := calldataload(arrPtr)
+            }
+            /**
+             *  Return item number in array and pointer to the first item
+             */
+            function getArrLenAndFirstItemPtr(arrPtr) -> arrLen, firstItemPtr {
+                arrLen := getArrItemNum(arrPtr)
                 // actual data pointer
-                dataPtr := add(arrPtr, 0x20)
+                firstItemPtr := add(arrPtr, 0x20)
+            }
+            /**
+             *  Calculate the total bytes number of prefix length plus items
+             */
+            function getU256ArrTotalBytesNum(u256ArrPtr) -> totalBytesNum {
+                let itemNum := getArrItemNum(u256ArrPtr)
+                let bytesNum := mul(itemNum, 0x20)
+
+                totalBytesNum := add(0x20, bytesNum)
             }
             /**
              *  If original value in calldata is 0x20
              *  then dataArrPtr passed in will be 0x24
              */
-            function copyU256ArrToMem(fptr, u256ArrPtr) -> newFptr {
-                let arrLen := calldataload(u256ArrPtr)
-                let itemLen := mul(arrLen, 0x20)
-                let copyLen := add(0x20, itemLen)
+            function copyU256ArrToMem(fptr, u256ArrPtr) -> newFptr {              
+                let totalBytesNum := getU256ArrTotalBytesNum(u256ArrPtr)
 
                 // calldatacopy(t, f, s)
                 // copy s bytes from calldata at position f to mem at position t
-                calldatacopy(fptr, u256ArrPtr, copyLen)
-                newFptr := add(fptr, copyLen)
+                calldatacopy(fptr, u256ArrPtr, totalBytesNum)
+                newFptr := add(fptr, totalBytesNum)
             }
 
 

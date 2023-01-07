@@ -134,17 +134,6 @@ object "MyYulERC1155" {
                 idArrTotalBytes := getU256ArrTotalBytesNum(idArrPtr)
                 amountArrTotalBytes := getU256ArrTotalBytesNum(amountArrPtr)
 
-
-// 0000000000000000000000000000000000000000000000000000000000000040  00 
-// 00000000000000000000000000000000000000000000000000000000000000a0  20  e0 = 80 + 20 * (1 + arrLen) 
- 
-// 0000000000000000000000000000000000000000000000000000000000000002  40 <- 
-// 0000000000000000000000000000000000000000000000000000000000000007  60 
-// 0000000000000000000000000000000000000000000000000000000000000008  80 
-// 0000000000000000000000000000000000000000000000000000000000000002  a0 <- 
-// 0000000000000000000000000000000000000000000000000000000000000005  c0 
-// 000000000000000000000000000000000000000000000000000000000000000a  e0 
-
                 // construct ids array pointer
                 mstore(fptr, 0x40)
                 fptr := add(fptr, 0x20)
@@ -266,7 +255,7 @@ object "MyYulERC1155" {
             function isApprovedForAll(account, operator) -> b {
                 b := sload(operatorApprovalsPos(account, operator))
             }
-            function doSafeTransferAcceptanceCheck(operator, from, to, id, amount, arrPtr) {
+            function doSafeTransferAcceptanceCheck(operator, from, to, id, amount, dataArrPtr) {
 
                 if extcodesize(to) {
                     let fptr := 0x80
@@ -277,23 +266,34 @@ object "MyYulERC1155" {
                     mstore(fptr, signature)
                     fptr := add(fptr, 0x20)
 
+                    // 0x00 ... 0x1f
+                    // construct operator
                     mstore(fptr, operator)
                     fptr := add(fptr, 0x20)
 
+                    // 0x20 ... 0x3f
+                    // construct from
                     mstore(fptr, from)
                     fptr := add(fptr, 0x20)
 
+                    // 0x40 ... 0x5f
+                    // construct id
                     mstore(fptr, id)
                     fptr := add(fptr, 0x20)
 
+                    // 0x60 ... 0x7f
+                    // construct from
                     mstore(fptr, amount)
                     fptr := add(fptr, 0x20)
 
+                    let dataArrTotalBytes := getU8ArrTotalBytesNum(dataArrPtr)
+
+                    // 0x80 ... 0x9f
+                    // construct data array pointer
                     mstore(fptr, 0xa0)
                     fptr := add(fptr, 0x20)
 
-                    // todo
-                    // fptr := copyCalldata2Mem(fptr, arrPtr)
+                    fptr := copyU8ArrToMem(fptr, dataArrPtr)
 
                     let response := call(gas(), to, 0, add(optr, 28), sub(fptr, optr), 0x00, 4)
                     require(response)

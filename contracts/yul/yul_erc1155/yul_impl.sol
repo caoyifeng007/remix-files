@@ -23,19 +23,6 @@ object "MyYulERC1155" {
         sstore(uriPos(), 0x68747470733a2f2f67616d652e6578616d706c652f6170692f6974656d2f7b69)
         sstore(add(uriPos(), 1), 0x647d2e6a736f6e00000000000000000000000000000000000000000000000000)
 
-        /* ---------- hardcoded for tests ----------- */
-        // balances[7][address of CallMyYulERC1155] = 0x6661
-        mstore(0x00, add(7, 0x100))
-        mstore(0x20, 0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8)
-        let lc := keccak256(0x00, 0x40)
-        sstore(lc, 100)
-
-        mstore(0x00, add(8, 0x100))
-        mstore(0x20, 0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8)
-        lc := keccak256(0x00, 0x40)
-        sstore(lc, 200)
-        /* ---------- hard coded for tests ----------- */
-
         datacopy(0, dataoffset("runtime"), datasize("runtime"))
         return(0, datasize("runtime"))
     }
@@ -91,13 +78,6 @@ object "MyYulERC1155" {
                 revert(0, 0)
             }
 
-            function supportsInterface(interfaceId) -> b {
-                let IERC165id := 0x01ffc9a7
-                let IERC1155id := 0xd9b67a26
-                let IERC1155MetadataURIid := 0x0e89341c
-                b := or(eq(interfaceId, IERC165id), or(eq(interfaceId, IERC1155id), eq(interfaceId, IERC1155MetadataURIid)))
-            }
-
             /* ---------- calldata decoding functions ----------- */
             function selector() -> s {
                 // 0x10...00 -> 1 * 10^28
@@ -123,6 +103,15 @@ object "MyYulERC1155" {
                     revert(0, 0)
                 }
                 v := calldataload(pos)
+            }
+
+            /* ---------- calldata encoding functions ---------- */
+            function returnUint(v) {
+                mstore(0, v)
+                return(0, 0x20)
+            }
+            function returnTrue() {
+                returnUint(1)
             }
 
             /* -------- events ---------- */
@@ -165,17 +154,6 @@ object "MyYulERC1155" {
                 log4(0x80, sub(fptr, 0x80), signature, caller(), from, to)
             }
 
-            
-
-            /* ---------- calldata encoding functions ---------- */
-            function returnUint(v) {
-                mstore(0, v)
-                return(0, 0x20)
-            }
-            function returnTrue() {
-                returnUint(1)
-            }
-
             /* -------- storage layout ---------- */
             function ownerPos() -> p { p := 0 }
             function uriLengthPos() -> p { p := 1 }
@@ -195,6 +173,12 @@ object "MyYulERC1155" {
             }
 
             /* -------- storage access ---------- */
+            function supportsInterface(interfaceId) -> b {
+                let IERC165id := 0x01ffc9a7
+                let IERC1155id := 0xd9b67a26
+                let IERC1155MetadataURIid := 0x0e89341c
+                b := or(eq(interfaceId, IERC165id), or(eq(interfaceId, IERC1155id), eq(interfaceId, IERC1155MetadataURIid)))
+            }
             function owner() -> o {
                 o := sload(ownerPos())
             }
@@ -259,11 +243,13 @@ object "MyYulERC1155" {
 
                 return(0x00, 0x20)
             }
+
             function balanceOf(account, id) -> b {
                 revertIfZeroAddress(account)
                 let balancesLocation := balancesPos(id, account)
                 b := sload(balancesLocation)
             }
+
             function balanceOfBatch(accArrPtr, idArrPtr)  {
 
                 let accArrLen, firstAccrPtr := getArrLenAndFirstItemPtr(accArrPtr)
@@ -299,15 +285,18 @@ object "MyYulERC1155" {
 
                 return(optr, sub(fptr, optr))
             }
+
             function setApprovalForAll(operator, approved) {
                 require(iszero(eq(caller(), operator)))
                 sstore(operatorApprovalsPos(caller(), operator), approved)
                 
                 emitApprovalForAll(caller(), operator, approved)
             }
+
             function isApprovedForAll(account, operator) -> b {
                 b := sload(operatorApprovalsPos(account, operator))
             }
+
             function doSafeTransferAcceptanceCheck(operator, from, to, id, amount, dataArrPtr) {
 
                 if extcodesize(to) {
@@ -369,6 +358,7 @@ object "MyYulERC1155" {
                 }
 
             }
+
             function doSafeBatchTransferAcceptanceCheck(operator, from, to, idArrPtr, amountArrPtr, dataArrPtr) {
 
                 if extcodesize(to) {
@@ -425,6 +415,7 @@ object "MyYulERC1155" {
                 }
 
             }
+
             function _safeTransferFrom(from, to, id, amount) {
                 let fromBalance := balanceOf(from, id)
                 require(gte(fromBalance, amount))
@@ -434,6 +425,7 @@ object "MyYulERC1155" {
                 let toBalance := balanceOf(to, id)
                 sstore(balancesPos(id, to), add(toBalance, amount))
             }
+
             function safeTransferFrom(from, to, id, amount, dataArrPtr) {
                 require(or(eq(from, caller()), isApprovedForAll(from, caller())))
                 revertIfZeroAddress(to)
@@ -446,6 +438,7 @@ object "MyYulERC1155" {
 
                 return(0x00, 0x20)
             }
+
             function safeBatchTransferFrom(from, to, idArrPtr, amountArrPtr, dataArrPtr) {
                 require(or(eq(from, caller()), isApprovedForAll(from, caller())))
                 revertIfZeroAddress(to)
@@ -473,7 +466,7 @@ object "MyYulERC1155" {
             }
 
             function mint(to, id, amount, dataArrPtr) {
-                // onlyOwner()
+                onlyOwner()
                 revertIfZeroAddress(to)
                 
                 let oBalance := balanceOf(to, id)
@@ -487,7 +480,7 @@ object "MyYulERC1155" {
             }
 
             function mintBatch(to, idArrPtr, amountArrPtr, dataArrPtr) {
-                // onlyOwner()
+                onlyOwner()
                 revertIfZeroAddress(to)
 
                 let idArrLen, firstIdPtr := getArrLenAndFirstItemPtr(idArrPtr)
@@ -514,7 +507,7 @@ object "MyYulERC1155" {
             }
 
             function burn(from, id, amount) {
-                // onlyOwner()
+                onlyOwner()
                 revertIfZeroAddress(from)
 
                 let oBalance := balanceOf(from, id)
@@ -530,7 +523,7 @@ object "MyYulERC1155" {
             }
 
             function burnBatch(from, idArrPtr, amountArrPtr) {
-                // onlyOwner()
+                onlyOwner()
                 revertIfZeroAddress(from)
 
                 let idArrLen, firstIdPtr := getArrLenAndFirstItemPtr(idArrPtr)

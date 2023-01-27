@@ -20,5 +20,3 @@ contract ExampleClone is Clone {
         return _getArgUint8(60);
     }
 }
-
-// 0x02d9151800000000000000000000000000000000000000000000000000000000

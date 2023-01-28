@@ -16,8 +16,6 @@ contract Delegate {
 
 contract Delegation {
 
-    event Log(bytes data);
-
   address public owner;
   Delegate delegate;
 
@@ -27,7 +25,6 @@ contract Delegation {
   }
 
   fallback() external {
-      emit Log(msg.data);
     (bool result,) = address(delegate).delegatecall(msg.data);
     if (result) {
       this;

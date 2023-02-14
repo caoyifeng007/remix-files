@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/proxy/Proxy.sol";
 
 import "hardhat/console.sol";
 
-contract TestContract {
+contract TestImple {
     uint public num = 0;
     event callMeMaybeEvent(address sender, address _from);
 
@@ -14,9 +14,21 @@ contract TestContract {
         num = num + 1;
         emit callMeMaybeEvent(msg.sender, address(this));
     }
+
+    
+
+    // prxoy num+1,  msg.sender = proxy address,  address(this) = proxy address
+    function t3() external {
+        address(this).call(abi.encodeWithSignature("callMeMaybe()"));
+    }
+
+    // proxy num+1,  msg.sender = EOA,  address(this) = proxy address
+    function t4() external {
+        address(this).delegatecall(abi.encodeWithSignature("callMeMaybe()"));
+    }
 }
 
-contract CallsTestContract is Proxy {
+contract TestProxy is Proxy {
     uint public num;
     address public impl;
     
@@ -28,23 +40,13 @@ contract CallsTestContract is Proxy {
         return impl;
     }
 
-    // impl num+1,  msg.sender = proxy address,  address(this) = impl address
-    function t1() external {
-        impl.call(abi.encodeWithSignature("callMeMaybe()"));
-    }
+    // // impl num+1,  msg.sender = proxy address,  address(this) = impl address
+    // function t1() external {
+    //     impl.call(abi.encodeWithSignature("callMeMaybe()"));
+    // }
 
-    // prxoy num+1,  msg.sender = EOA,  address(this) = prxoy address
-    function t2() external {
-        impl.delegatecall(abi.encodeWithSignature("callMeMaybe()"));
-    }
-
-    // prxoy num+1,  msg.sender = proxy address,  address(this) = proxy address
-    function t3() external {
-        address(this).call(abi.encodeWithSignature("callMeMaybe()"));
-    }
-
-    // proxy num+1,  msg.sender = EOA,  address(this) = proxy address
-    function t4() external {
-        address(this).delegatecall(abi.encodeWithSignature("callMeMaybe()"));
-    }
+    // // prxoy num+1,  msg.sender = EOA,  address(this) = prxoy address
+    // function t2() external {
+    //     impl.delegatecall(abi.encodeWithSignature("callMeMaybe()"));
+    // }
 }
